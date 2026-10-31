@@ -359,6 +359,7 @@ GRANT EXECUTE ON FUNCTION public.set_impersonation(TEXT, UUID) TO authenticated;
 GRANT EXECUTE ON FUNCTION public.clear_impersonation() TO authenticated;
 
 DROP POLICY IF EXISTS impersonation_state_own ON public.user_impersonation_state;
+DROP POLICY IF EXISTS impersonation_state_select_own ON public.user_impersonation_state;
 CREATE POLICY impersonation_state_select_own
   ON public.user_impersonation_state
   FOR SELECT

@@ -65,6 +65,7 @@ GRANT EXECUTE ON FUNCTION public.set_impersonation(TEXT, UUID) TO authenticated;
 GRANT EXECUTE ON FUNCTION public.clear_impersonation() TO authenticated;
 
 DROP POLICY IF EXISTS impersonation_state_own ON public.user_impersonation_state;
+DROP POLICY IF EXISTS impersonation_state_select_own ON public.user_impersonation_state;
 CREATE POLICY impersonation_state_select_own
   ON public.user_impersonation_state
   FOR SELECT
@@ -428,6 +429,7 @@ BEGIN
       condition_sql := 'FALSE';
     END IF;
 
+    EXECUTE format('DROP POLICY IF EXISTS %I ON public.%I', policy_name, table_name);
     EXECUTE format(
       'CREATE POLICY %I ON public.%I FOR SELECT USING (%s)',
       policy_name, table_name, condition_sql
