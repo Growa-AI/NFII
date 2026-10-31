@@ -56,9 +56,10 @@ describe('NFII cross-module operation security contract (static regression)',()=
 
   it('links the operational network to Watchtower without fixture fallback',()=>{
     expect(watchtower).toContain('<WatchtowerOperationsPulse />')
-    expect(watchtower).toContain("href=\"/dashboard/procurement\"")
-    expect(watchtower).toContain("href=\"/dashboard/logistics\"")
-    expect(watchtower).toContain("href=\"/dashboard/reserves\"")
+    expect(watchtower).toContain('href={item.href}')
+    expect(watchtower).toContain("'/dashboard/procurement'")
+    expect(watchtower).toContain("'/dashboard/logistics'")
+    expect(watchtower).toContain("'/dashboard/reserves'")
     expect(watchtower).not.toContain('buildDemoFoodBalanceInput')
   })
 })
