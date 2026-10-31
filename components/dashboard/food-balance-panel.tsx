@@ -1,10 +1,11 @@
 'use client'
 
-import { useEffect, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import { RefreshCw } from 'lucide-react'
 import { useOrganization } from '@/hooks/use-organization'
 import { useI18n } from '@/lib/i18n'
 import type { FoodBalanceResult } from '@/lib/food-security/balance'
+import { calculateFoodScenario, ZERO_FOOD_SCENARIO, type FoodScenarioAdjustments } from '@/lib/food-security/scenario'
 
 interface BalanceResponse {
   balance: FoodBalanceResult
@@ -24,6 +25,7 @@ export function FoodBalancePanel({ commodityId }: { commodityId: string }) {
   const [days, setDays] = useState(30)
   const [mode, setMode] = useState<'live' | 'demo'>('live')
   const [refresh, setRefresh] = useState(0)
+  const [scenarioSettings, setScenarioSettings] = useState<FoodScenarioAdjustments>({ ...ZERO_FOOD_SCENARIO })
   const [loading, setLoading] = useState(false)
   const [result, setResult] = useState<BalanceResponse | null>(null)
   const [error, setError] = useState<string | null>(null)
@@ -59,6 +61,16 @@ export function FoodBalancePanel({ commodityId }: { commodityId: string }) {
   }, [organizationId, commodityId, days, mode, refresh])
 
   const balance = result?.balance
+  const scenarioImpact = useMemo(
+    () => balance ? calculateFoodScenario(balance, scenarioSettings) : null,
+    [balance, scenarioSettings],
+  )
+  const scenarioControls: { key: keyof FoodScenarioAdjustments; en: string; ar: string }[] = [
+    { key: 'productionReductionPercent', en: 'Domestic production reduction', ar: 'انخفاض الإنتاج المحلي' },
+    { key: 'importReductionPercent', en: 'Confirmed import reduction', ar: 'انخفاض الواردات المؤكدة' },
+    { key: 'demandIncreasePercent', en: 'Demand increase', ar: 'زيادة الطلب' },
+    { key: 'openingStockLossPercent', en: 'Opening inventory loss', ar: 'فقد المخزون الافتتاحي' },
+  ]
   const metrics = [
     [label('Opening usable inventory', 'المخزون المتاح في البداية'), balance?.totals.openingStockTonnes],
     [label('Domestic production', 'الإنتاج المحلي'), balance?.totals.domesticProductionTonnes],
@@ -157,6 +169,75 @@ export function FoodBalancePanel({ commodityId }: { commodityId: string }) {
               ? balance.evidence.sourceRefs.slice(0, 4).join(' · ')
               : label('No validated source records', 'لا توجد مصادر معتمدة')}
           </p>
+          <details className="rounded-lg border border-line bg-muted/30 p-3">
+            <summary className="cursor-pointer text-[13px] font-medium text-content">
+              {label('Scenario simulator (what-if preview)', 'محاكاة السيناريوهات الافتراضية')}
+              <span className="ms-2 text-[10px] font-semibold text-warning-strong">SIMULATED</span>
+            </summary>
+            <p className="mt-2 text-[12px] text-content-soft">
+              {label(
+                'Change aggregate assumptions to compare a scenario against the current balance. Results are not forecasts and do not change live inventory or procurement.',
+                'عدّل الافتراضات الإجمالية لمقارنة سيناريو بالرصيد الحالي. النتائج ليست توقعات ولا تغيّر المخزون أو المشتريات الفعلية.',
+              )}
+            </p>
+            <div className="mt-3 grid gap-3 md:grid-cols-2">
+              {scenarioControls.map(({ key, en, ar: arName }) => (
+                <label key={key} className="block rounded-md border border-line bg-card px-3 py-2">
+                  <span className="flex items-center justify-between gap-3 text-[12px] text-content">
+                    <span>{label(en, arName)}</span>
+                    <strong className="tabular-nums">{scenarioSettings[key]}%</strong>
+                  </span>
+                  <input
+                    type="range"
+                    min={0}
+                    max={100}
+                    step={5}
+                    value={scenarioSettings[key]}
+                    onChange={(event) => setScenarioSettings((previous) => ({
+                      ...previous,
+                      [key]: Number(event.target.value),
+                    }))}
+                    className="mt-2 w-full accent-sage-700"
+                    aria-label={label(en, arName)}
+                  />
+                </label>
+              ))}
+            </div>
+            <div className="mt-3 flex justify-end">
+              <button type="button" onClick={() => setScenarioSettings({ ...ZERO_FOOD_SCENARIO })}
+                className="rounded-md border border-line-strong bg-card px-3 py-1.5 text-[12px] text-content hover:bg-muted">
+                {label('Reset shocks', 'إعادة تعيين الصدمات')}
+              </button>
+            </div>
+            {scenarioImpact?.status === 'complete' ? (
+              <div className="mt-3 grid grid-cols-2 gap-2 lg:grid-cols-4" aria-live="polite">
+                <div className="rounded-md border border-line bg-card p-2">
+                  <p className="text-[11px] text-content-soft">{label('Baseline net balance', 'الرصيد الأساسي')}</p>
+                  <p className="text-[18px] font-medium tabular-nums">{fmt(scenarioImpact.totals.baselineProjectedBalanceTonnes)} t</p>
+                </div>
+                <div className="rounded-md border border-line bg-card p-2">
+                  <p className="text-[11px] text-content-soft">{label('Scenario net balance', 'الرصيد في السيناريو')}</p>
+                  <p className="text-[18px] font-medium tabular-nums">{fmt(scenarioImpact.totals.scenarioProjectedBalanceTonnes)} t</p>
+                </div>
+                <div className="rounded-md border border-line bg-card p-2">
+                  <p className="text-[11px] text-content-soft">{label('Scenario deficit', 'العجز في السيناريو')}</p>
+                  <p className="text-[18px] font-medium tabular-nums">{fmt(scenarioImpact.totals.scenarioDeficitTonnes)} t</p>
+                </div>
+                <div className="rounded-md border border-line bg-card p-2">
+                  <p className="text-[11px] text-content-soft">{label('Scenario coverage', 'التغطية في السيناريو')}</p>
+                  <p className="text-[18px] font-medium tabular-nums">{fmt(scenarioImpact.totals.scenarioCoverageDays)} {label('days', 'أيام')}</p>
+                </div>
+              </div>
+            ) : (
+              <p className="mt-3 text-[12px] text-warning-strong">
+                {label('A complete food balance is required before simulating a scenario.', 'يلزم وجود رصيد غذائي مكتمل قبل محاكاة السيناريو.')}
+              </p>
+            )}
+            <p className="mt-2 text-[11px] text-content-soft">
+              {label('Preview only. Not saved, not a daily stockout model, and never used to authorize operational decisions.',
+                'للمعاينة فقط. لا تُحفظ النتائج ولا تمثل نموذجاً يومياً لنفاد المخزون ولا تُستخدم لاعتماد القرارات التشغيلية.')}
+            </p>
+          </details>
         </>
       ) : null}
     </section>

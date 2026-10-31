@@ -85,3 +85,20 @@ Connect verified forecast production, demand and shipment adapters, implement
 source completeness checks, and build a country-level aggregation service
 with explicit national permissions. Only then use the calculated balances in
 national Watchtower KPI alerts and agent recommendations.
+
+## Deterministic What-If sensitivity preview
+
+The Commodity Intelligence balance panel now includes a non-persistent What-If preview.
+It modifies aggregate assumptions for domestic production, confirmed imports,
+period demand, and opening usable stock. A zero-shock scenario preserves the
+source-backed balance; missing source inputs prevent a numeric simulation.
+
+**This is not a national crisis simulator, a daily stockout model, or an
+operational workflow.** It neither creates purchases nor changes warehouse
+inventory. The source mode (LIVE organization data or synthetic DEMO) remains
+visible, and the entire output is explicitly SIMULATED. There is no external
+LLM-based numerical estimation.
+
+The scenario math is covered by unit tests in
+`lib/food-security/scenario.test.ts`. Run the repository CI quality gate,
+including TypeScript, Vitest and Next.js build, before deploying.
