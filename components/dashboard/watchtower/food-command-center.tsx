@@ -146,8 +146,8 @@ export function WatchtowerFoodCommandCenter() {
               </span>
             </div>
             <p className="mt-1 text-[12px] text-content-soft">
-              {tx('Production · Imports · Demand · Strategic availability · Source quality',
-                'الإنتاج · الواردات · الطلب · التوافر الاستراتيجي · جودة المصادر')}
+              {tx('Production · Imports · Demand · Inventory coverage · Evidence quality',
+                'الإنتاج · الواردات · الطلب · تغطية المخزون · جودة الأدلة')}
             </p>
             <p className="mt-1 text-[11px] font-medium text-warning-strong">
               {tx('Organization-level intelligence, not certified Qatar national statistics.',
