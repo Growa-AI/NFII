@@ -6,6 +6,7 @@ import { useOrganization } from '@/hooks/use-organization'
 import { useI18n } from '@/lib/i18n'
 import type { FoodBalanceResult } from '@/lib/food-security/balance'
 import { calculateFoodScenario, ZERO_FOOD_SCENARIO, type FoodScenarioAdjustments } from '@/lib/food-security/scenario'
+import { FoodSourceIntake } from '@/components/dashboard/food-source-intake'
 
 interface BalanceResponse {
   balance: FoodBalanceResult
@@ -238,6 +239,13 @@ export function FoodBalancePanel({ commodityId }: { commodityId: string }) {
                 'للمعاينة فقط. لا تُحفظ النتائج ولا تمثل نموذجاً يومياً لنفاد المخزون ولا تُستخدم لاعتماد القرارات التشغيلية.')}
             </p>
           </details>
+          {mode === 'live' && organizationId && (
+            <FoodSourceIntake
+              organizationId={organizationId}
+              commodityId={commodityId}
+              onRecordsChanged={() => setRefresh(value => value + 1)}
+            />
+          )}
         </>
       ) : null}
     </section>
