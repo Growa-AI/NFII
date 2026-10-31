@@ -106,6 +106,7 @@ END
 $$;
 
 -- Extend auth capabilities RPC with platform staff tier.
+DROP FUNCTION IF EXISTS public.get_my_auth_capabilities();
 CREATE OR REPLACE FUNCTION public.get_my_auth_capabilities()
 RETURNS TABLE (
   is_platform_admin BOOLEAN,
