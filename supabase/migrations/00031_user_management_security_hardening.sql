@@ -730,6 +730,7 @@ BEGIN
       condition_sql := 'FALSE';
     END IF;
 
+    EXECUTE format('DROP POLICY IF EXISTS %I ON public.%I', policy_name, table_name);
     EXECUTE format(
       'CREATE POLICY %I ON public.%I FOR SELECT USING (%s)',
       policy_name, table_name, condition_sql
