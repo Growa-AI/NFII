@@ -119,47 +119,14 @@ export default function SupplyOverviewPage() {
   }, [effectiveRole])
 
   useEffect(() => {
-    const resolveOrganizationContext = async () => {
-      if (organization?.id) {
-        setResolvedOrgId(organization.id)
-        setResolvedOrgName(organization.name)
-        return
-      }
-
-      const { data: authData } = await supabase.auth.getUser()
-      const user = authData.user
-      if (!user?.email?.endsWith('@growa.ai')) {
-        setResolvedOrgId(null)
-        setResolvedOrgName(null)
-        return
-      }
-
-      const { data: roleData, error: roleError } = await supabase.rpc('get_effective_role', {
-        user_id: user.id,
-      })
-      const fallbackRoleData =
-        roleError?.code === 'PGRST202' || roleError?.code === 'PGRST203'
-          ? (await supabase.rpc('get_effective_role')).data
-          : null
-      const role = roleData?.[0] as
-        | { is_impersonating?: boolean; org_id?: string; org_name?: string }
-        | undefined
-      const fallbackRole = fallbackRoleData?.[0] as
-        | { is_impersonating?: boolean; org_id?: string; org_name?: string }
-        | undefined
-      const resolvedRole = role || fallbackRole
-
-      if (resolvedRole?.is_impersonating && resolvedRole?.org_id) {
-        setResolvedOrgId(resolvedRole.org_id)
-        setResolvedOrgName(resolvedRole.org_name || null)
-      } else {
-        setResolvedOrgId(null)
-        setResolvedOrgName(null)
-      }
+    if (organization?.id) {
+      setResolvedOrgId(organization.id)
+      setResolvedOrgName(organization.name)
+      return
     }
-
-    resolveOrganizationContext()
-  }, [organization?.id, organization?.name, supabase])
+    setResolvedOrgId(null)
+    setResolvedOrgName(null)
+  }, [organization?.id, organization?.name])
 
   useEffect(() => {
     const loadSupplyOverview = async () => {

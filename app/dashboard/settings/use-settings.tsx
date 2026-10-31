@@ -11,6 +11,8 @@ import { usePermissions } from '@/hooks/use-permissions'
 import { useTeamManagement, type TeamMember } from '@/hooks/use-team-management'
 import { useConfirm } from '@/components/brand/feedback'
 import { useAuth } from '@/hooks/use-auth'
+import { usePlatformCapabilities } from '@/hooks/use-platform-capabilities'
+import { organizationTypesForCreator } from '@/lib/auth/organization-types'
 import { humanize } from '@/components/brand/status'
 import { SETTINGS_TABS, type AssignableRole, type OrganizationType, type SettingsTab } from './settings-model'
 
@@ -66,6 +68,7 @@ export function useSettings() {
   const supabase = createClient()
   const { locale, setLocale, tr } = useI18n()
   const { organization } = useOrganization()
+  const { isPlatformAdmin } = usePlatformCapabilities()
   const { getUserRole } = usePermissions()
   const { getTeamMembers, addMemberByEmail, updateMemberRole, removeMember } = useTeamManagement()
 
@@ -748,6 +751,11 @@ export function useSettings() {
           government_master: tr('Government master'),
         } as Record<string, string>)[value] ?? humanize(value)
       : tr('Unknown')
+  const createOrganizationTypeOptions = useMemo(
+    () => organizationTypesForCreator(isPlatformAdmin),
+    [isPlatformAdmin]
+  )
+
   const dateLocale = locale === 'ar' ? 'ar-QA' : 'en-GB'
   const initials =
     [firstName, lastName].filter(Boolean).map((part) => part.trim()[0]?.toUpperCase()).join('') ||
@@ -764,6 +772,7 @@ export function useSettings() {
     createOrgName,
     createOrgSlug,
     createOrgType,
+    createOrganizationTypeOptions,
     currentRole,
     dateLocale,
     error,

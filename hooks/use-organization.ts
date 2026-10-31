@@ -3,6 +3,7 @@
 import { useState, useEffect } from 'react'
 import { useAuth } from './use-auth'
 import { createClient } from '@/lib/supabase/client'
+import { isActiveMembershipStatus } from '@/lib/auth/membership-status'
 
 export interface Organization {
   id: string
@@ -25,55 +26,50 @@ export function invalidateOrganizationCache() {
   organizationRequests.clear()
 }
 
+async function loadRolePreviewOrg(
+  supabase: ReturnType<typeof createClient>
+): Promise<Organization | null> {
+  const { data: caps } = await supabase.rpc('get_my_auth_capabilities')
+  const row = (Array.isArray(caps) ? caps[0] : caps) as
+    | { role_preview_active?: boolean; preview_org_id?: string | null; is_platform_admin?: boolean }
+    | undefined
+
+  if (!row?.is_platform_admin || !row.role_preview_active || !row.preview_org_id) {
+    return null
+  }
+
+  const { data: previewOrg, error } = await supabase
+    .from('organizations')
+    .select('*')
+    .eq('id', row.preview_org_id)
+    .maybeSingle()
+
+  if (error || !previewOrg) return null
+  return previewOrg as Organization
+}
+
 async function loadOrganizations(
   supabase: ReturnType<typeof createClient>,
   user: { id: string; email?: string | null }
 ): Promise<OrganizationState> {
-  const isGrowaAdmin = user.email?.endsWith('@growa.ai') || false
-
-  // In impersonation mode, organization context comes from effective role RPC.
-  // This keeps dashboard modules (e.g. Supply Overview) scoped to impersonated org.
-  if (isGrowaAdmin) {
-    let roleData: { org_id?: string; is_impersonating?: boolean } | null = null
-    const { data: effectiveRoleData } = await supabase.rpc('get_effective_role', {
-      user_id: user.id,
-    })
-    roleData = effectiveRoleData?.[0] || null
-
-    if (!roleData?.is_impersonating) {
-      const { data: impersonationState } = await supabase
-        .from('user_impersonation_state')
-        .select('org_id, is_impersonating')
-        .eq('user_id', user.id)
-        .maybeSingle()
-      if (impersonationState?.is_impersonating && impersonationState?.org_id) {
-        roleData = { org_id: impersonationState.org_id, is_impersonating: true }
-      }
-    }
-
-    if (roleData?.is_impersonating && roleData?.org_id) {
-      const { data: impersonatedOrg, error: impersonatedOrgError } = await supabase
-        .from('organizations')
-        .select('*')
-        .eq('id', roleData.org_id)
-        .maybeSingle()
-
-      if (!impersonatedOrgError && impersonatedOrg) {
-        return { organization: impersonatedOrg as Organization, organizations: [impersonatedOrg as Organization] }
-      }
-    }
+  const previewOrg = await loadRolePreviewOrg(supabase)
+  if (previewOrg) {
+    return { organization: previewOrg, organizations: [previewOrg] }
   }
 
   // Get organizations where user is a member
   const { data: memberships, error: memberError } = await supabase
     .from('user_organization_members')
-    .select('organization_id')
+    .select('organization_id, status')
     .eq('user_id', user.id)
 
   if (memberError) throw memberError
-  if (!memberships || memberships.length === 0) return { organization: null, organizations: [] }
+  const activeMemberships = (memberships || []).filter((m) =>
+    isActiveMembershipStatus((m as { status?: string }).status)
+  )
+  if (activeMemberships.length === 0) return { organization: null, organizations: [] }
 
-  const orgIds = memberships.map((m) => m.organization_id)
+  const orgIds = activeMemberships.map((m) => m.organization_id)
   const { data: orgs, error: orgsError } = await supabase.from('organizations').select('*').in('id', orgIds)
   if (orgsError) throw orgsError
 
