@@ -16,7 +16,7 @@ import {
   OPERATION_FIELDS, type NfiiOperationKind, type OperationField,
 } from '@/lib/nfii/operations-validation'
 import {
-  EMPTY_OPERATIONS, operationalVolume, reservePosition,
+  EMPTY_OPERATIONS, operationalVolume, reservePosition, previewOperationsSnapshot,
   type OperationsArea, type OperationsRow, type OperationsResponse,
   type OperationsSnapshot,
 } from '@/lib/nfii/operations-types'
@@ -264,6 +264,7 @@ export function NfiiOperationsWorkspace({focus}:{focus:OperationsArea}){
   const [error,setError]=useState('')
   const [notice,setNotice]=useState('')
   const [truncated,setTruncated]=useState<string[]>([])
+  const [forcePreview,setForcePreview]=useState(false)
 
   useEffect(()=>{
     setSnapshot(null)
@@ -299,13 +300,17 @@ export function NfiiOperationsWorkspace({focus}:{focus:OperationsArea}){
     return()=>controller.abort()
   },[orgId,orgLoading,reload])
 
-  const s=snapshot??EMPTY_OPERATIONS
-  const canEdit=ctx?.hasPermission('supply.edit')??false
-  const canPropose=ctx?.hasPermission('decisions.propose')??false
-  const canApprove=ctx?.hasPermission('decisions.approve')??false
-  const canExecute=ctx?.hasPermission('decisions.execute')??false
-  const canCreate=formKind==='release'?canPropose:canEdit
   const today=qatarDate()
+  const illustrative=useMemo(()=>previewOperationsSnapshot(today),[today])
+  const liveHasRecords=snapshot!==null && Object.values(snapshot).some(rows=>rows.length>0)
+  // No SQL installation is needed to explore the pre-existing illustrative fixture.
+  const isPreview=forcePreview || (!orgLoading && !loading && (!orgId || !liveHasRecords))
+  const s=isPreview?illustrative:(snapshot??EMPTY_OPERATIONS)
+  const canEdit=!isPreview && (ctx?.hasPermission('supply.edit')??false)
+  const canPropose=!isPreview && (ctx?.hasPermission('decisions.propose')??false)
+  const canApprove=!isPreview && (ctx?.hasPermission('decisions.approve')??false)
+  const canExecute=!isPreview && (ctx?.hasPermission('decisions.execute')??false)
+  const canCreate=formKind==='release'?canPropose:canEdit
   const reserves=useMemo(()=>reservePosition(s,today),[s,today])
 
   const recentApprovals=s.approvals.filter(row=>row.status==='pending')
@@ -345,7 +350,7 @@ export function NfiiOperationsWorkspace({focus}:{focus:OperationsArea}){
 
   const submitCreate=async(event:FormEvent<HTMLFormElement>)=>{
     event.preventDefault()
-    if(!orgId||busy||!canCreate)return
+    if(!orgId||busy||!canCreate||isPreview)return
     setBusy(true);setError('');setNotice('')
     try{
       const data=Object.fromEntries(OPERATION_FIELDS[formKind].map(field=>[
@@ -371,7 +376,7 @@ export function NfiiOperationsWorkspace({focus}:{focus:OperationsArea}){
   }
 
   const submitAction=async()=>{
-    if(!orgId||!pendingAction||busy||actionNote.trim().length<8)return
+    if(!orgId||!pendingAction||busy||isPreview||actionNote.trim().length<8)return
     setBusy(true);setError('');setNotice('')
     try{
       const res=await fetch('/api/nfii/operations/action',{
@@ -473,7 +478,41 @@ export function NfiiOperationsWorkspace({focus}:{focus:OperationsArea}){
     <div className="mx-auto max-w-[1500px] space-y-4 pb-12">
       <OperationsHeader focus={focus} organizationName={organization?.name??null}/>
 
-      {error&&<div role="alert" className="rounded-lg border border-warning-line bg-warning-soft p-3 text-[12px] text-critical">
+      {!orgLoading && !loading && (
+        <div className="nfii-panel flex flex-wrap items-center justify-between gap-3 px-4 py-3">
+          <div>
+            <p className="text-[12px] font-medium text-content">
+              {isPreview ? tx('Illustrative Qatar dataset', 'بيانات قطر التوضيحية')
+                : tx('Authorized organization records', 'سجلات المؤسسة المخولة')}
+            </p>
+            <p className="mt-1 text-[11px] text-content-soft">
+              {isPreview
+                ? tx('Reference data from the existing NFII example. Not verified contracts, shipments or reserves. View-only, no SQL required.',
+                    'بيانات توضيحية موجودة في NFII وليست عقوداً أو شحنات أو احتياطيات موثقة. للعرض فقط دون SQL.')
+                : tx('Data loaded from your organization in Supabase.',
+                    'البيانات محملة من مؤسستك في Supabase.')}
+            </p>
+            {isPreview && error && (
+              <p className="mt-1 text-[11px] text-warning-strong">
+                {tx('Live data unavailable: ', 'البيانات الحية غير متاحة: ')}{error}
+              </p>
+            )}
+          </div>
+          <div className="flex flex-wrap gap-2">
+            <button type="button" className="nfii-button nfii-button-secondary"
+              aria-pressed={isPreview} onClick={()=>setForcePreview(true)}>
+              {tx('Example data', 'بيانات توضيحية')}
+            </button>
+            <button type="button" className="nfii-button nfii-button-secondary"
+              disabled={!orgId || !liveHasRecords}
+              aria-pressed={!isPreview} onClick={()=>setForcePreview(false)}>
+              {tx('Live data', 'بيانات فعلية')}
+            </button>
+          </div>
+        </div>
+      )}
+
+      {error&&!isPreview&&<div role="alert" className="rounded-lg border border-warning-line bg-warning-soft p-3 text-[12px] text-critical">
         {error}
       </div>}
       {notice&&<div role="status" className="rounded-lg border border-line-accent bg-cream-100 p-3 text-[12px] text-content-accent">
@@ -488,22 +527,6 @@ export function NfiiOperationsWorkspace({focus}:{focus:OperationsArea}){
       {orgLoading||loading?(
         <div className="nfii-panel p-10 text-[13px] text-content-soft" role="status">
           {tx('Loading organization operations…','جارٍ تحميل عمليات المؤسسة…')}
-        </div>
-      ):!orgId?(
-        <div className="nfii-panel p-8 text-[13px] text-content-soft">
-          {tx('Select an authorized organization first.',
-            'اختر مؤسسة مخولة أولاً.')}
-        </div>
-      ):!snapshot?(
-        <div className="nfii-panel p-8 text-[12px] text-content-soft">
-          {tx(
-            'Operational ledger not available. Apply migration 00041 after a database backup, then refresh this page. No demonstration rows are shown.',
-            'سجل العمليات غير متاح. طبّق الترحيل 00041 بعد أخذ نسخة احتياطية، ثم حدّث الصفحة. لا تُعرض بيانات تجريبية.'
-          )}
-          <button className="nfii-button nfii-button-secondary ms-3"
-            onClick={()=>setReload(v=>v+1)}>
-            <RefreshCw className="h-3.5 w-3.5"/>{tx('Retry','إعادة المحاولة')}
-          </button>
         </div>
       ):(
         <>
@@ -521,10 +544,11 @@ export function NfiiOperationsWorkspace({focus}:{focus:OperationsArea}){
               <div className="flex flex-wrap items-center justify-between gap-2 border-b border-line px-4 py-3">
                 <div>
                   <h2 className="text-[14px] font-semibold text-content">
-                    {tx('Operational register','السجل التشغيلي')}
+                    {isPreview?tx('Example records','سجلات توضيحية'):tx('Operational register','السجل التشغيلي')}
                   </h2>
                   <p className="mt-1 text-[11px] text-content-soft">
-                    {tx('Tenant-specific records and their actual review states.',
+                    {isPreview?tx('Illustrative links and workflow states, not audited transactions.',
+                      'روابط وحالات عمل توضيحية، وليست معاملات مدققة.'):tx('Tenant-specific records and their actual review states.',
                       'سجلات المؤسسة وحالات مراجعتها الفعلية.')}
                   </p>
                 </div>
@@ -554,7 +578,7 @@ export function NfiiOperationsWorkspace({focus}:{focus:OperationsArea}){
               {s[activeView].length===0?(
                 <div className="p-4">
                   <div className="nfii-empty">
-                    {tx('No verified or submitted records in this register. Start by creating the first record with appropriate evidence.',
+                    {isPreview?tx('No example records in this section.', 'لا توجد سجلات توضيحية في هذا القسم.'):tx('No verified or submitted records in this register. Start by creating the first record with appropriate evidence.',
                       'لا توجد سجلات في هذا السجل. ابدأ بإنشاء أول سجل مع الأدلة المناسبة.')}
                   </div>
                 </div>
@@ -608,6 +632,7 @@ export function NfiiOperationsWorkspace({focus}:{focus:OperationsArea}){
                     {tx('New operational record','سجل تشغيلي جديد')}
                   </h2>
                   <button type="button" className="nfii-button nfii-button-secondary"
+                    disabled={isPreview}
                     onClick={()=>setFormOpen(v=>!v)}
                     aria-expanded={formOpen}>
                     {formOpen?tx('Close','إغلاق'):tx('Open form','فتح النموذج')}
@@ -615,7 +640,8 @@ export function NfiiOperationsWorkspace({focus}:{focus:OperationsArea}){
                 </div>
                 <div className="p-4">
                   <p className="mb-3 text-[11px] leading-relaxed text-content-soft">
-                    {focus==='procurement'
+                    {isPreview?tx('This example is read-only. Switch to live records to create or approve operations.',
+                      'هذه البيانات للعرض فقط. انتقل إلى السجلات الفعلية لإنشاء أو اعتماد العمليات.'):focus==='procurement'
                       ?tx('Create suppliers first, then contracts, then purchase orders. Each step requires approval.',
                         'أنشئ الموردين أولاً ثم العقود وأوامر الشراء؛ كل خطوة تتطلب الموافقة.')
                       :focus==='logistics'
@@ -624,7 +650,7 @@ export function NfiiOperationsWorkspace({focus}:{focus:OperationsArea}){
                         :tx('Approve warehouses, register received lots against delivered shipments, then request reserve releases.',
                           'اعتمد المستودعات وسجل الدفعات من الشحنات المستلمة ثم اطلب صرف المخزون.')}
                   </p>
-                  {formOpen&&(
+                  {formOpen&&!isPreview&&(
                     <form className="space-y-3" onSubmit={e=>void submitCreate(e)}>
                       <label className="block space-y-1">
                         <span className="nfii-label">{tx('Record type','نوع السجل')}</span>
@@ -663,7 +689,8 @@ export function NfiiOperationsWorkspace({focus}:{focus:OperationsArea}){
                   {tx('Approval inbox','صندوق الموافقات')}
                 </h3>
                 <p className="mt-1 text-[11px] text-content-soft">
-                  {tx('Proposals are inactive until independently approved.',
+                  {isPreview?tx('Illustrative workflow only; no approvals exist in Supabase.',
+                    'سير عمل توضيحي؛ لا توجد موافقات فعلية في Supabase.'):tx('Proposals are inactive until independently approved.',
                     'لا تصبح الطلبات فعالة حتى تتم الموافقة عليها بشكل مستقل.')}
                 </p>
                 <div className="mt-3 space-y-2">

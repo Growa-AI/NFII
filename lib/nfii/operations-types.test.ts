@@ -1,5 +1,5 @@
 import {describe,expect,it} from 'vitest'
-import {EMPTY_OPERATIONS,reservePosition,type OperationsSnapshot} from './operations-types'
+import {EMPTY_OPERATIONS,reservePosition,previewOperationsSnapshot,type OperationsSnapshot} from './operations-types'
 
 const org='11111111-1111-4111-8111-111111111111'
 const sample:OperationsSnapshot={
@@ -40,5 +40,33 @@ describe('NFII reserve availability logic',()=>{
     const p=reservePosition(sample,'2026-10-31')
     expect(p.availablePhysicalTonnes).toBeGreaterThan(p.uncommittedTonnes)
     expect(p.approvedReservedTonnes).toBe(20)
+  })
+})
+
+
+describe('Existing Qatar preview is connected and non-operational',()=>{
+  it('reuses the bundled 53 sample rows with consistent foreign links',()=>{
+    const p=previewOperationsSnapshot('2026-10-31')
+    expect(p.suppliers).toHaveLength(10)
+    expect(p.contracts).toHaveLength(11)
+    expect(p.purchaseOrders).toHaveLength(10)
+    expect(p.shipments).toHaveLength(10)
+    expect(p.warehouses).toHaveLength(3)
+    expect(p.lots).toHaveLength(5)
+    expect(p.releases).toHaveLength(4)
+    expect(p.contracts.every(c=>p.suppliers.some(s=>s.id===c.supplier_id))).toBe(true)
+    expect(p.purchaseOrders.every(po=>p.contracts.some(c=>c.id===po.contract_id))).toBe(true)
+    expect(p.shipments.every(sh=>p.purchaseOrders.some(po=>po.id===sh.purchase_order_id))).toBe(true)
+    expect(p.lots.every(lot=>p.shipments.some(sh=>sh.id===lot.shipment_id))).toBe(true)
+    expect(p.lots.every(lot=>p.warehouses.some(w=>w.id===lot.warehouse_id))).toBe(true)
+  })
+  it('does not turn examples into approved audit events or real tenant IDs',()=>{
+    const p=previewOperationsSnapshot('2026-10-31')
+    expect(p.events).toEqual([])
+    expect(p.suppliers.every(s=>s.id.startsWith('demo-') && s.organization_id==='illustrative-only')).toBe(true)
+    expect(p.suppliers.some(s=>s.name?.startsWith('SIMULATED |'))).toBe(false)
+    const position=reservePosition(p,'2026-10-31')
+    expect(position.uncommittedTonnes).toBeGreaterThan(0)
+    expect(position.uncommittedTonnes).toBeLessThan(position.availablePhysicalTonnes)
   })
 })

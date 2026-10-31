@@ -2,7 +2,9 @@
  * Deterministic source-backed commodity triage. Organization scope only.
  * Coverage thresholds are product screening heuristics, NOT government policy.
  */
-import type { FoodBalanceResult } from '@/lib/food-security/balance'
+import { addFoodDays, calculateFoodBalance, type FoodBalanceResult } from '@/lib/food-security/balance'
+import { buildDemoFoodBalanceInput } from '@/lib/food-security/demo-data'
+import { COMMODITY_CATALOG } from '@/lib/platform/commodity-catalog'
 import type { CommodityDefinition } from '@/lib/platform/commodity-catalog'
 
 export type FoodRiskBand = 'critical' | 'high' | 'attention' | 'stable' | 'unknown'
@@ -29,8 +31,8 @@ export interface FoodPostureCommodity {
 
 export interface FoodPosture {
   schemaVersion: 1
-  scope: 'organization'
-  sourceMode: 'live'
+  scope: 'organization' | 'illustrative'
+  sourceMode: 'live' | 'demo'
   organizationId: string
   generatedAt: string
   fromDate: string
@@ -87,9 +89,11 @@ export function buildFoodPosture(input: {
   generatedAt: string
   pendingReviewCount: number | null
   entries: readonly FoodPostureEntry[]
+  /** Explicitly chosen in-memory fixture only. Never authorized live statistics. */
+  preview?: boolean
 }): FoodPosture {
   const commodities = input.entries.map(({ commodity, balance, latestReviewedAt }): FoodPostureCommodity => {
-    if (balance.sourceMode !== 'live' || balance.commodityId !== commodity.id ||
+    if (balance.sourceMode !== (input.preview ? 'demo' : 'live') || balance.commodityId !== commodity.id ||
         balance.fromDate !== input.fromDate || balance.toDate !== input.toDate) {
       throw new Error('Food posture source does not match the requested scope')
     }
@@ -121,8 +125,8 @@ export function buildFoodPosture(input: {
   const dates = commodities.map(c => c.latestReviewedAt).filter((v): v is string => Boolean(v))
   return {
     schemaVersion: 1,
-    scope: 'organization',
-    sourceMode: 'live',
+    scope: input.preview ? 'illustrative' : 'organization',
+    sourceMode: input.preview ? 'demo' : 'live',
     organizationId: input.organizationId,
     generatedAt: input.generatedAt,
     fromDate: input.fromDate,
@@ -139,11 +143,33 @@ export function buildFoodPosture(input: {
     latestReviewedAt: dates.length ? dates.sort().at(-1) ?? null : null,
     commodities,
     caveats: [
-      'ORGANIZATION-SCOPED reviewed records, not certified Qatar national statistics.',
+      ...(input.preview ? ['ILLUSTRATIVE EXAMPLE ONLY. These commodity balances are generated from synthetic local fixtures and are NOT verified Qatar statistics or operational records.'] : ['ORGANIZATION-SCOPED reviewed records, not certified Qatar national statistics.']),
       'Risk bands use 7/14/30-day screening thresholds, not official government policy.',
       'Import share measures planned inflows only; it is not national import dependency.',
       'Coverage days are projected at the end of the period, not a daily stockout model.',
       'Missing or unreviewed information is never interpreted as zero or as proof of safety.',
     ],
   }
+}
+
+
+/**
+ * Reuse the already-shipped demo food-balance engine when Supabase is empty
+ * or unavailable. Never insert, review or represent these values as live.
+ */
+export function buildIllustrativeFoodPosture(fromDate: string, days: 7 | 30 | 90 | 180): FoodPosture {
+  const toDate = addFoodDays(fromDate, days - 1)
+  const entries: FoodPostureEntry[] = COMMODITY_CATALOG.map(commodity => ({
+    commodity,
+    balance: calculateFoodBalance(buildDemoFoodBalanceInput(commodity.id, fromDate, days)),
+    latestReviewedAt: null,
+  }))
+  return buildFoodPosture({
+    preview: true,
+    organizationId: 'illustrative-only',
+    fromDate, toDate, days,
+    generatedAt: new Date().toISOString(),
+    pendingReviewCount: null,
+    entries,
+  })
 }

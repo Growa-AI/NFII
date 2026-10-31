@@ -1,8 +1,9 @@
 import { describe, expect, it } from 'vitest'
 import { calculateFoodBalance } from '@/lib/food-security/balance'
 import { buildDemoFoodBalanceInput } from '@/lib/food-security/demo-data'
+import { buildResilienceDecisionQueue } from './resilience-queue'
 import { COMMODITY_CATALOG } from '@/lib/platform/commodity-catalog'
-import { buildFoodPosture, type FoodPostureEntry } from './food-posture'
+import { buildFoodPosture, buildIllustrativeFoodPosture, type FoodPostureEntry } from './food-posture'
 
 const start = '2026-11-01'
 const end = '2026-11-30'
@@ -138,5 +139,23 @@ describe('Watchtower source-backed organization food posture', () => {
     expect(view.pendingReviewCount).toBeNull()
     expect(view.scope).toBe('organization')
     expect(view.sourceMode).toBe('live')
+  })
+})
+
+
+describe('Illustrative food posture isolation',()=>{
+  it('derives visible commodity examples without treating them as reviewed data',()=>{
+    const p=buildIllustrativeFoodPosture(start,30)
+    expect(p.sourceMode).toBe('demo')
+    expect(p.scope).toBe('illustrative')
+    expect(p.totalCommodities).toBe(COMMODITY_CATALOG.length)
+    expect(p.assessedCount).toBe(COMMODITY_CATALOG.length)
+    expect(p.commodities.every(c=>c.evidenceSourceRefs.some(r=>r.startsWith('synthetic-fixture:')))).toBe(true)
+    expect(p.caveats.join(' ')).toContain('ILLUSTRATIVE EXAMPLE ONLY')
+    expect(p.pendingReviewCount).toBeNull()
+  })
+  it('does not permit demo posture to enter the operational procurement decision queue',()=>{
+    const preview=buildIllustrativeFoodPosture(start,30)
+    expect(()=>buildResilienceDecisionQueue(preview)).toThrow('reviewed organization live')
   })
 })

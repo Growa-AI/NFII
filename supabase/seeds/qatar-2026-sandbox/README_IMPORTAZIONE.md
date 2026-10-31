@@ -1,5 +1,39 @@
 # NFII Qatar 2026 | Sandbox dataset (SYNTHETIC)
 
+## Visualizzazione senza SQL (metodo consigliato)
+
+**Non eseguire i seed SQL solo per vedere il dataset.** Le pagine esistenti
+Watchtower, Procurement, Logistics, Strategic Reserves e Scenario Room usano ora
+gli esempi *già inclusi nel repository* quando non vi sono dati reali
+autorizzati e completi. I 53 record operativi provengono da
+\`03_dataset_preview.json\`; i bilanci alimentari utilizzano il generatore
+esistente \`lib/food-security/demo-data.ts\`. Non serve alcuna migrazione
+aggiuntiva né creare utenti, organizzazioni, tabelle o approvazioni.
+
+- L'anteprima è disponibile ai normali utenti autenticati della dashboard,
+  anche senza appartenenza a un'organizzazione sandbox.
+- Fornitori, contratti, ordini, spedizioni, magazzini e lotti risultano
+  interconnessi visivamente, **ma non sono transazioni verificate**.
+- Gli esempi sono **sola lettura**: non si possono confermare spedizioni,
+  approvare contratti, rilasciare scorte o modificare dati reali.
+- Quando esistono record Supabase autorizzati, la visualizzazione live ha la
+  precedenza. Il modulo operativo può passare all'esempio per confronto.
+- Un'etichetta “Dati illustrativi / Example data” distingue l'anteprima dai
+  dati reali. Non ometterla: il progetto riguarda sicurezza alimentare e
+  continuità nazionale.
+- Nessun utente ottiene accesso ai dati di altre organizzazioni. Cambiano solo
+  i dati di esempio, uguali per gli utenti della dashboard.
+
+**Perché i due seed SQL si fermano:** il codice richiede deliberatamente una
+singola organizzazione riconoscibile come SANDBOX/DEMO e due utenti test
+indipendenti e attivi. Se queste condizioni non sono soddisfatte, il blocco
+SQL interrompe l'operazione per evitare di creare contratti, approvazioni e
+scorte inesistenti in un'organizzazione di produzione. Non rimuovere questa
+protezione. Per la sola visualizzazione, questi script non sono necessari.
+
+---
+
+
 > **NOT REAL QATAR GOVERNMENT RECORDS.** Invented companies, quotes, contracts, bills of lading, reserve locations, stock levels and approval outcomes. Geographic references are illustrative. Keep this entire dataset inside a dedicated, restricted **SANDBOX / DEMO / SIMULATION** organization. This package does **not** modify your database automatically.
 
 ## Correzioni rispetto al primo ZIP

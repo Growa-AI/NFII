@@ -6,7 +6,7 @@ import { ArrowUpRight, Boxes, ClipboardCheck, RefreshCw, Ship, ShoppingBag } fro
 import { useOrganization } from '@/hooks/use-organization'
 import { useI18n } from '@/lib/i18n'
 import {
-  reservePosition, operationalVolume, type OperationsResponse,
+  reservePosition, operationalVolume, previewOperationsSnapshot, type OperationsResponse,
   type OperationsSnapshot,
 } from '@/lib/nfii/operations-types'
 
@@ -21,7 +21,7 @@ function pretty(n:number):string {
   return n.toLocaleString('en-US',{maximumFractionDigits:1})
 }
 
-/** No synthetic data. User-scope auth remains checked by the API. */
+/** Existing illustrative preview is always distinguished from authorized live data. */
 export function WatchtowerOperationsPulse(){
   const {organization,loading:orgLoading}=useOrganization()
   const {locale}=useI18n()
@@ -60,20 +60,25 @@ export function WatchtowerOperationsPulse(){
     return ()=>controller.abort()
   },[orgId,orgLoading,refresh])
 
+  const preview=useMemo(()=>previewOperationsSnapshot(todayQatar()),[])
+  const hasLiveRecords=snapshot!==null && Object.values(snapshot).some(rows=>rows.length>0)
+  const isPreview=!orgLoading&&!loading&&(!orgId||!hasLiveRecords)
+  const activeSnapshot=isPreview?preview:snapshot
+
   const metrics=useMemo(()=>{
-    if(!snapshot)return null
-    const reserve=reservePosition(snapshot,todayQatar())
+    if(!activeSnapshot)return null
+    const reserve=reservePosition(activeSnapshot,todayQatar())
     return {
-      approvedSuppliers:snapshot.suppliers.filter(r=>r.status==='approved').length,
-      approvedOrders:snapshot.purchaseOrders.filter(r=>r.status==='approved').length,
-      inTransit:snapshot.shipments.filter(r=>r.status==='in_transit'||r.status==='delayed').length,
-      pendingApprovals:snapshot.approvals.filter(r=>r.status==='pending').length,
+      approvedSuppliers:activeSnapshot.suppliers.filter(r=>r.status==='approved').length,
+      approvedOrders:activeSnapshot.purchaseOrders.filter(r=>r.status==='approved').length,
+      inTransit:activeSnapshot.shipments.filter(r=>r.status==='in_transit'||r.status==='delayed').length,
+      pendingApprovals:activeSnapshot.approvals.filter(r=>r.status==='pending').length,
       physicalReserveTonnes:reserve.availablePhysicalTonnes,
       uncommittedTonnes:reserve.uncommittedTonnes,
-      orderedTonnes:snapshot.purchaseOrders.filter(r=>r.status==='approved')
+      orderedTonnes:activeSnapshot.purchaseOrders.filter(r=>r.status==='approved')
         .reduce((sum,r)=>sum+operationalVolume(r.ordered_tonnes),0),
     }
-  },[snapshot])
+  },[activeSnapshot])
 
   const modules=[
     {
@@ -104,7 +109,7 @@ export function WatchtowerOperationsPulse(){
       className="nfii-panel p-4 md:p-5">
       <div className="flex flex-wrap items-start justify-between gap-3">
         <div>
-          <p className="nfii-label !text-content-accent">{tx('OPERATIONS / SOURCE-BACKED','العمليات / مصادر موثقة')}</p>
+          <p className="nfii-label !text-content-accent">{isPreview?tx('OPERATIONS / ILLUSTRATIVE DATA','العمليات / بيانات توضيحية'):tx('OPERATIONS / SOURCE-BACKED','العمليات / مصادر موثقة')}</p>
           <h2 className="mt-1 text-[18px] font-semibold text-content">
             {tx('Operational supply network', 'شبكة الإمداد التشغيلية')}
           </h2>
@@ -130,18 +135,6 @@ export function WatchtowerOperationsPulse(){
         <p role="status" className="mt-4 text-[12px] text-content-soft">
           {tx('Loading operational data…','جارٍ تحميل البيانات التشغيلية…')}
         </p>
-      ):!orgId?(
-        <p className="mt-4 text-[12px] text-content-soft">
-          {tx('Select an authorized organization.','اختر مؤسسة مخولة.')}
-        </p>
-      ):error?(
-        <div className="mt-4 rounded-full border border-warning-line bg-muted p-3 text-[12px] text-warning-strong">
-          {tx('Operational data unavailable: ','البيانات التشغيلية غير متاحة: ')}{error}
-          <p className="mt-1 text-[11px]">
-            {tx('Migration 00041 must be applied; no values are substituted.',
-              'يجب تطبيق الترحيل 00041؛ لا يتم استبدال القيم بأرقام افتراضية.')}
-          </p>
-        </div>
       ):(
         <div className="mt-4 flex flex-wrap gap-3">
           <span className="inline-flex items-center gap-1.5 rounded-full border border-line-accent bg-muted px-2.5 py-1.5 text-[10px] text-content-accent">
@@ -155,6 +148,13 @@ export function WatchtowerOperationsPulse(){
         </div>
       )}
 
+      {isPreview && (
+        <p role="status" className="mt-3 rounded-lg border border-line-accent bg-cream-100 p-3 text-[11px] text-content">
+          {tx('Illustrative Qatar example, visible to dashboard users. Not actual orders, shipments or reserves; no database writes.',
+            'مثال توضيحي لقطر متاح لمستخدمي لوحة التحكم، وليس أوامر أو شحنات أو مخزوناً فعلياً؛ دون كتابة في قاعدة البيانات.')}
+          {error && <span className="block mt-1 text-content-soft">{tx('Live source: ','المصدر الفعلي: ')}{error}</span>}
+        </p>
+      )}
       <div className="mt-4 grid gap-3 md:grid-cols-3">
         {modules.map(item=>{
           const Icon=item.icon
@@ -179,8 +179,8 @@ export function WatchtowerOperationsPulse(){
       </div>
       <p className="mt-3 text-[10px] leading-relaxed text-content-soft">
         {tx(
-          'Operator-entered and independently reviewed operational records. No customs API, live port telemetry, payment instruction or cross-agency national aggregation. These quantities are not silently merged into the Food Balance.',
-          'سجلات تشغيلية أدخلها المستخدمون وتخضع للمراجعة المستقلة. لا يوجد ربط مباشر بالجمارك أو الموانئ أو المدفوعات أو تجميع وطني بين الجهات. لا تُدمج هذه الكميات تلقائياً في الميزان الغذائي.'
+          isPreview ? 'Figures shown are illustrative, not independently reviewed or nationally verified; no real transactions have occurred.' : 'Operator-entered and independently reviewed operational records. No customs API, live port telemetry, payment instruction or cross-agency national aggregation. These quantities are not silently merged into the Food Balance.',
+          isPreview ? 'الأرقام المعروضة توضيحية وليست موثقة أو معاملات فعلية.' : 'سجلات تشغيلية أدخلها المستخدمون وتخضع للمراجعة المستقلة. لا يوجد ربط مباشر بالجمارك أو الموانئ أو المدفوعات أو تجميع وطني بين الجهات. لا تُدمج هذه الكميات تلقائياً في الميزان الغذائي.'
         )}
       </p>
     </section>

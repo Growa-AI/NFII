@@ -6,7 +6,8 @@ import { ArrowUpRight, FlaskConical, RefreshCw, RotateCcw } from 'lucide-react'
 import { useOrganization } from '@/hooks/use-organization'
 import { useI18n } from '@/lib/i18n'
 import { COMMODITY_CATALOG } from '@/lib/platform/commodity-catalog'
-import type { FoodBalanceResult } from '@/lib/food-security/balance'
+import { calculateFoodBalance, type FoodBalanceResult } from '@/lib/food-security/balance'
+import { buildDemoFoodBalanceInput } from '@/lib/food-security/demo-data'
 import {
   calculateFoodScenario,
   ZERO_FOOD_SCENARIO,
@@ -37,8 +38,8 @@ interface BalanceResponse {
 }
 
 /**
- * A LIVE, read-only scenario workbench on verified source records.
- * No demo fixtures, procurement writes, approvals or agent tool execution.
+ * A read-only scenario workbench. Live inputs are preferred; the existing
+ * clearly-labeled fixture allows a view-only example when records are absent.
  */
 export function WatchtowerScenarioRoom() {
   const { organization, loading: orgLoading } = useOrganization()
@@ -51,13 +52,15 @@ export function WatchtowerScenarioRoom() {
   const [adjustments, setAdjustments] = useState<FoodScenarioAdjustments>({
     ...ZERO_FOOD_SCENARIO,
   })
-  const [balance, setBalance] = useState<FoodBalanceResult | null>(null)
+  const [liveBalance, setLiveBalance] = useState<FoodBalanceResult | null>(null)
+  const [loadedOrg, setLoadedOrg] = useState<string | null>(null)
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [refresh, setRefresh] = useState(0)
 
   useEffect(() => {
-    setBalance(null)
+    setLiveBalance(null)
+    setLoadedOrg(null)
     setError(null)
     if (!organizationId || orgLoading) {
       setLoading(false)
@@ -84,7 +87,10 @@ export function WatchtowerScenarioRoom() {
             payload.balance.commodityId !== commodityId || payload.balance.days !== days) {
           throw new Error('Unexpected balance source or period')
         }
-        if (!controller.signal.aborted) setBalance(payload.balance)
+        if (!controller.signal.aborted) {
+          setLiveBalance(payload.balance)
+          setLoadedOrg(organizationId)
+        }
       } catch (cause) {
         if (!controller.signal.aborted) {
           setError(cause instanceof Error ? cause.message : 'Verified balance unavailable')
@@ -96,6 +102,22 @@ export function WatchtowerScenarioRoom() {
     void load()
     return () => controller.abort()
   }, [organizationId, commodityId, days, orgLoading, refresh])
+
+  const exampleBalance = useMemo(() => {
+    const parts = new Intl.DateTimeFormat('en-US', {
+      timeZone: 'Asia/Qatar', year: 'numeric', month: '2-digit', day: '2-digit',
+    }).formatToParts(new Date())
+    const part = (type: string) => parts.find(p => p.type === type)?.value ?? ''
+    return calculateFoodBalance(buildDemoFoodBalanceInput(
+      commodityId, part('year') + '-' + part('month') + '-' + part('day'), days,
+    ))
+  }, [commodityId, days])
+  const authorizedLive = loadedOrg === organizationId &&
+    liveBalance?.commodityId === commodityId &&
+    liveBalance?.days === days ? liveBalance : null
+  const isIllustrative = !organizationId || !!error ||
+    (!loading && (!authorizedLive || authorizedLive.status !== 'complete'))
+  const balance = isIllustrative ? exampleBalance : authorizedLive
 
   const scenario = useMemo(() => balance
     ? calculateFoodScenario(balance, adjustments)
@@ -111,7 +133,8 @@ export function WatchtowerScenarioRoom() {
 
   const values = [
     {
-      en: 'Verified baseline balance', ar: 'الرصيد الأساسي المُراجع',
+      en: isIllustrative ? 'Illustrative baseline balance' : 'Verified baseline balance',
+      ar: isIllustrative ? 'رصيد أساسي توضيحي' : 'الرصيد الأساسي المُراجع',
       value: balance?.totals.projectedBalanceTonnes,
       suffix: 't',
     },
@@ -161,7 +184,7 @@ export function WatchtowerScenarioRoom() {
               value={commodityId}
               onChange={event => {
                 setCommodityId(event.target.value)
-                setBalance(null)
+                setLiveBalance(null)
                 setAdjustments({ ...ZERO_FOOD_SCENARIO })
               }}
               className="h-9 min-w-[145px] rounded-md border border-line bg-card px-2 text-[12px] text-content"
@@ -180,7 +203,7 @@ export function WatchtowerScenarioRoom() {
               value={days}
               onChange={event => {
                 setDays(Number(event.target.value) as 7 | 30 | 90 | 180)
-                setBalance(null)
+                setLiveBalance(null)
               }}
               className="h-9 rounded-md border border-line bg-card px-2 text-[12px] text-content"
             >
@@ -193,7 +216,7 @@ export function WatchtowerScenarioRoom() {
             type="button"
             onClick={() => setRefresh(value => value + 1)}
             aria-label={tx('Refresh scenario baseline', 'تحديث أساس المحاكاة')}
-            disabled={loading || !organizationId}
+            disabled={loading}
             className="inline-flex h-9 w-9 items-center justify-center rounded-md border border-line text-content disabled:opacity-40"
           >
             <RefreshCw className={'h-4 w-4 ' + (loading ? 'animate-spin' : '')} />
@@ -205,12 +228,7 @@ export function WatchtowerScenarioRoom() {
         <p className="py-4 text-[12px] text-content-soft" role="status">
           {tx('Resolving authorized organization…', 'جارٍ تحديد المؤسسة المصرح بها…')}
         </p>
-      ) : !organizationId ? (
-        <p className="rounded-md bg-muted p-3 text-[12px] text-content-soft">
-          {tx('Select an authorized organization to analyze its reviewed food supplies.',
-            'اختر مؤسسة مخولة لتحليل الإمدادات الغذائية المراجعة الخاصة بها.')}
-        </p>
-      ) : error ? (
+      ) : error && !isIllustrative ? (
         <p role="alert" className="rounded-md border border-warning-line bg-warning-soft p-3 text-[12px] text-content">
           {error}
         </p>
@@ -220,6 +238,15 @@ export function WatchtowerScenarioRoom() {
         </p>
       ) : (
         <>
+          {isIllustrative && (
+            <div role="status" className="rounded-lg border border-line-accent bg-cream-100 p-3 text-[12px] text-content">
+              <strong>{tx('Illustrative scenario inputs', 'مدخلات سيناريو توضيحية')}</strong>
+              <p className="mt-1 text-[11px] text-content-soft">
+                {tx('Uses existing local examples instead of verified supplies. Scenario results are hypothetical and never trigger procurement.',
+                  'تستخدم بيانات توضيحية محلية بدلاً من الإمدادات الموثقة. النتائج افتراضية ولا تؤدي إلى تنفيذ مشتريات.')}
+              </p>
+            </div>
+          )}
           {isReady ? (
             <>
               <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
@@ -351,11 +378,11 @@ export function WatchtowerScenarioRoom() {
                 'تحليل حساسية إجمالي وليس توقعاً للشحنات؛ لا يغير المخزون أو أوامر الشراء أو الموافقات أو الإجراءات الفعلية.'
               )}
             </p>
-            <Link href={commodityLink}
+            {!isIllustrative && <Link href={commodityLink}
               className="inline-flex items-center gap-1 text-[12px] font-medium text-sage-700 hover:underline">
               {tx('Investigate sources and balances', 'تحليل المصادر والموازين')}
               <ArrowUpRight className="h-3.5 w-3.5 rtl:-scale-x-100" aria-hidden="true" />
-            </Link>
+            </Link>}
           </div>
         </>
       )}

@@ -5,7 +5,7 @@ import Link from 'next/link'
 import { AlertTriangle, ArrowUpRight, Database, RefreshCw, ShieldCheck, Wheat } from 'lucide-react'
 import { useI18n } from '@/lib/i18n'
 import { useOrganization } from '@/hooks/use-organization'
-import type { FoodPosture, FoodPostureCommodity, FoodRiskBand } from '@/lib/watchtower/food-posture'
+import { buildIllustrativeFoodPosture, type FoodPosture, type FoodPostureCommodity, type FoodRiskBand } from '@/lib/watchtower/food-posture'
 import { WatchtowerResilienceDesk } from '@/components/dashboard/watchtower/resilience-desk'
 
 const SCREENING_LABEL: Record<FoodRiskBand, { en: string; ar: string; css: string }> = {
@@ -32,10 +32,9 @@ function format(value: number | null | undefined, decimals = 1): string {
     : value.toLocaleString('en-US', { maximumFractionDigits: decimals })
 }
 
-function scopeLink(organizationId: string, commodityId: string): string {
-  const params = new URLSearchParams({
-    module: 'commodities', commodityId, organizationId,
-  })
+function scopeLink(organizationId: string | null, commodityId: string): string {
+  const params = new URLSearchParams({ module: 'commodities', commodityId })
+  if (organizationId) params.set('organizationId', organizationId)
   return '/dashboard?' + params.toString()
 }
 
@@ -49,11 +48,11 @@ export function WatchtowerFoodCommandCenter() {
   const [filter, setFilter] = useState<'all' | 'risk' | 'gaps'>('all')
   const [refresh, setRefresh] = useState(0)
   const [loading, setLoading] = useState(false)
-  const [data, setData] = useState<FoodPosture | null>(null)
+  const [liveData, setLiveData] = useState<FoodPosture | null>(null)
   const [error, setError] = useState<string | null>(null)
 
   useEffect(() => {
-    setData(null)
+    setLiveData(null)
     setError(null)
     if (!orgId) return
     const controller = new AbortController()
@@ -70,7 +69,7 @@ export function WatchtowerFoodCommandCenter() {
             payload.sourceMode !== 'live') {
           throw new Error('Food security response has an unexpected scope')
         }
-        if (!controller.signal.aborted) setData(payload)
+        if (!controller.signal.aborted) setLiveData(payload)
       } catch (cause) {
         if (!controller.signal.aborted) {
           setError(cause instanceof Error ? cause.message : 'Food security data unavailable')
@@ -82,6 +81,21 @@ export function WatchtowerFoodCommandCenter() {
     void load()
     return () => controller.abort()
   }, [orgId, days, refresh])
+
+  const preview = useMemo(() => {
+    const parts = new Intl.DateTimeFormat('en-US', {
+      timeZone: 'Asia/Qatar', year: 'numeric', month: '2-digit', day: '2-digit',
+    }).formatToParts(new Date())
+    const part = (type: string) => parts.find(p => p.type === type)?.value ?? ''
+    return buildIllustrativeFoodPosture(
+      part('year') + '-' + part('month') + '-' + part('day'), days,
+    )
+  }, [days])
+  const authorizedLive = liveData?.organizationId === orgId &&
+    liveData.sourceMode === 'live' ? liveData : null
+  const isIllustrative = !orgId || !!error || (!loading && !authorizedLive) ||
+    authorizedLive?.assessedCount === 0
+  const data = isIllustrative ? preview : authorizedLive
 
   const commodities = useMemo(() => {
     const rows = data?.commodities ?? []
@@ -103,7 +117,8 @@ export function WatchtowerFoodCommandCenter() {
     {
       en: 'Commodities assessed', ar: 'السلع المُقيّمة',
       value: String(data.assessedCount) + ' / ' + String(data.totalCommodities),
-      noteEn: 'Complete reviewed coverage', noteAr: 'تغطية مكتملة من مصادر مُراجعة',
+      noteEn: isIllustrative ? 'Illustrative commodity coverage' : 'Complete reviewed coverage',
+      noteAr: isIllustrative ? 'تغطية توضيحية للسلع' : 'تغطية مكتملة من مصادر مُراجعة',
     },
     {
       en: 'Projected deficits', ar: 'العجز المتوقع',
@@ -144,7 +159,7 @@ export function WatchtowerFoodCommandCenter() {
                 {tx('Food security command center', 'مركز قيادة الأمن الغذائي')}
               </h2>
               <span className="rounded border border-line bg-muted px-2 py-1 text-[10px] font-semibold text-content-soft">
-                {tx('REVIEWED SOURCES · ORGANIZATION', 'مصادر مُراجعة · مستوى المؤسسة')}
+                {isIllustrative ? tx('ILLUSTRATIVE DATA · NOT VERIFIED', 'بيانات توضيحية · غير موثقة') : tx('REVIEWED SOURCES · ORGANIZATION', 'مصادر مُراجعة · مستوى المؤسسة')}
               </span>
             </div>
             <p className="mt-1 text-[12px] text-content-soft">
@@ -172,7 +187,7 @@ export function WatchtowerFoodCommandCenter() {
               <option value={180}>180 {tx('days', 'يوماً')}</option>
             </select>
           </label>
-          <button type="button" onClick={() => setRefresh(x => x + 1)} disabled={loading || !orgId}
+          <button type="button" onClick={() => setRefresh(x => x + 1)} disabled={loading}
             aria-label={tx('Refresh food security', 'تحديث الأمن الغذائي')}
             className="inline-flex h-9 w-9 items-center justify-center rounded-md border border-line text-content disabled:opacity-40">
             <RefreshCw className={'h-4 w-4 ' + (loading ? 'animate-spin' : '')} />
@@ -182,12 +197,7 @@ export function WatchtowerFoodCommandCenter() {
 
       {organizationLoading ? (
         <p className="p-5 text-[13px] text-content-soft">{tx('Resolving your organization…', 'جارٍ تحديد مؤسستك…')}</p>
-      ) : !orgId ? (
-        <p className="rounded-md bg-muted p-4 text-[13px] text-content-soft">
-          {tx('Choose an authorized organization to view its food security position.',
-            'اختر مؤسسة مخولة لعرض وضع الأمن الغذائي الخاص بها.')}
-        </p>
-      ) : error ? (
+      ) : error && !isIllustrative ? (
         <div role="alert" className="rounded-md border border-warning-line bg-warning-soft p-3 text-[12px] text-warning-strong">
           {error}. {tx('Food KPI values are withheld while the source is unavailable.',
             'لن تُعرض مؤشرات الأمن الغذائي في حالة تعذر الوصول إلى المصدر.')}
@@ -198,10 +208,20 @@ export function WatchtowerFoodCommandCenter() {
         </p>
       ) : (
         <>
+          {isIllustrative && (
+            <div role="status" className="rounded-lg border border-line-accent bg-cream-100 p-3 text-[12px] text-content">
+              <strong>{tx('Qatar illustrative food data', 'بيانات غذائية توضيحية لقطر')}</strong>
+              <p className="mt-1 text-[11px] text-content-soft">
+                {tx('From the existing local NFII example, not verified Qatar stock, imports or government statistics. No database changes or SQL required.',
+                  'من مثال NFII المحلي، وليست مخزوناً أو واردات قطرية موثقة أو إحصاءات رسمية. لا تتطلب تغيير قاعدة البيانات أو تنفيذ SQL.')}
+              </p>
+              {error && <p className="mt-1 text-[10px] text-content-soft">{tx('Live source: ', 'المصدر الفعلي: ')}{error}</p>}
+            </div>
+          )}
           <div className="flex flex-wrap justify-between gap-2 text-[11px] text-content-soft">
-            <span>{tx('Scope', 'النطاق')}: <strong className="text-content">{organization?.name ?? orgId}</strong></span>
+            <span>{tx('Scope', 'النطاق')}: <strong className="text-content">{isIllustrative ? tx('Example data', 'بيانات توضيحية') : (organization?.name ?? orgId)}</strong></span>
             <span>{data.fromDate} → {data.toDate}</span>
-            <span>{tx('Last source review', 'آخر مراجعة للمصدر')}: {lastReviewed ?? tx('Not available', 'غير متاح')}</span>
+            <span>{isIllustrative ? tx('Not reviewed or certified', 'غير مُراجعة أو معتمدة') : tx('Last source review', 'آخر مراجعة للمصدر') + ': ' + (lastReviewed ?? tx('Not available', 'غير متاح'))}</span>
           </div>
 
           <div className="grid grid-cols-2 gap-2 md:grid-cols-3 xl:grid-cols-5">
@@ -279,11 +299,13 @@ export function WatchtowerFoodCommandCenter() {
                               ? String(row.evidenceSourceRefs.length) : '—'}
                           </td>
                           <td className="px-3 py-3 text-end">
+                            {isIllustrative ? <span className="text-[11px] text-content-soft">{tx('Example', 'مثال')}</span> : (
                             <Link href={scopeLink(orgId, row.commodityId)}
                               aria-label={tx('Open commodity intelligence for ', 'فتح تحليل السلعة: ') + (ar ? row.nameAr : row.name)}
                               className="inline-flex items-center gap-1 text-[11px] font-medium text-sage-700 hover:underline">
                               {tx('Open', 'فتح')} <ArrowUpRight className="h-3 w-3 rtl:-scale-x-100" />
                             </Link>
+                            )}
                           </td>
                         </tr>
                       )
@@ -319,11 +341,17 @@ export function WatchtowerFoodCommandCenter() {
                   <ol className="mt-2 space-y-2">
                     {riskRows.slice(0, 4).map(row => (
                       <li key={row.commodityId} className="border-b border-dotted border-line pb-2 last:border-0">
+                        {isIllustrative ? (
+                          <span className="flex items-center justify-between text-[12px] text-content">
+                            <span className="font-medium">{ar ? row.nameAr : row.name}</span>
+                          </span>
+                        ) : (
                         <Link href={scopeLink(orgId, row.commodityId)}
                           className="flex items-center justify-between gap-2 text-[12px] text-content hover:text-sage-700">
                           <span className="font-medium">{ar ? row.nameAr : row.name}</span>
                           <ArrowUpRight className="h-3 w-3" />
                         </Link>
+                        )}
                         <p className="mt-1 text-[11px] text-content-soft">
                           {ar ? REASON[row.reason].ar : REASON[row.reason].en}
                         </p>
@@ -362,16 +390,21 @@ export function WatchtowerFoodCommandCenter() {
                       'سجلات مُرسلة تحتاج إلى موافقة مستقلة.')}
                   </p>
                 )}
-                <Link href={scopeLink(orgId, data.commodities[0]?.commodityId || 'tomato')}
+                {!isIllustrative && (                <Link href={scopeLink(orgId, data.commodities[0]?.commodityId || 'tomato')}
                   className="mt-3 inline-flex items-center gap-1 text-[11px] font-medium text-sage-700 hover:underline">
                   <ShieldCheck className="h-3.5 w-3.5" />
                   {tx('Review commodity sources', 'مراجعة مصادر السلع')}
-                </Link>
+                </Link>)}
               </div>
             </div>
           </div>
 
-          <WatchtowerResilienceDesk posture={data} />
+          {isIllustrative ? (
+            <p className="rounded-lg border border-line bg-muted p-3 text-[11px] text-content-soft">
+              {tx('Procurement decisions are disabled for illustrative data. Use verified records for operational recommendations.',
+                'قرارات المشتريات معطلة للبيانات التوضيحية. استخدم مصادر موثقة للتوصيات التشغيلية.')}
+            </p>
+          ) : <WatchtowerResilienceDesk posture={data} />}
 
           <div className="flex flex-wrap items-start justify-between gap-2 border-t border-dotted border-line pt-3 text-[11px] text-content-soft">
             <p>{tx('Coverage bands: <7d critical, 7–13d high, 14–29d attention. Screening only.',
