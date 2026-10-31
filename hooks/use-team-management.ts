@@ -157,22 +157,17 @@ export function useTeamManagement() {
     [supabase]
   )
 
-  const removeMember = useCallback(
-    async (organizationId: string, memberId: string) => {
-      const { error } = await supabase
-        .from('user_organization_members')
-        .delete()
-        .eq('id', memberId)
-        .eq('organization_id', organizationId)
-
-      if (error) {
-        console.error('[team] member removal failed:', error)
-        return false
-      }
-      return true
-    },
-    [supabase]
-  )
+  const removeMember = useCallback(async (organizationId: string, memberId: string) => {
+    const res = await fetch(
+      `/api/memberships/${encodeURIComponent(memberId)}?organizationId=${encodeURIComponent(organizationId)}`,
+      { method: 'DELETE' }
+    )
+    if (!res.ok) {
+      console.error('[team] member removal failed:', await res.text())
+      return false
+    }
+    return true
+  }, [])
 
   const inviteMember = useCallback(
     async (organizationId: string, email: string, role: string = 'viewer') => {

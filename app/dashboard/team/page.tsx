@@ -1,6 +1,8 @@
 'use client'
 
 import { useEffect, useState } from 'react'
+import { InviteMemberDialog } from '@/components/team/invite-member-dialog'
+import { useActiveOrganizationOptional } from '@/contexts/active-organization-context'
 import { useI18n } from '@/lib/i18n'
 import { useAuth } from '@/hooks/use-auth'
 import { useOrganization } from '@/hooks/use-organization'
@@ -19,11 +21,13 @@ export default function TeamPage() {
   const { organization } = useOrganization()
   const { getTeamMembers, removeMember } = useTeamManagement()
   const { getUserRole } = usePermissions()
+  const activeOrg = useActiveOrganizationOptional()
   const organizationId = organization?.id || ''
 
   const [members, setMembers] = useState<TeamMember[]>([])
   const [isLoading, setIsLoading] = useState(true)
   const [userRole, setUserRole] = useState<string | null>(null)
+  const [inviteOpen, setInviteOpen] = useState(false)
 
   useEffect(() => {
     const loadData = async () => {
@@ -53,7 +57,11 @@ export default function TeamPage() {
     )
   }
 
-  const canManageUsers = userRole === 'admin' || userRole === 'super_admin'
+  const canManageUsers =
+    activeOrg?.hasPermission('users.manage') ||
+    userRole === 'admin' ||
+    userRole === 'super_admin'
+  const canInvite = activeOrg?.hasPermission('users.invite') ?? canManageUsers
   const dateLocale = locale === 'ar' ? 'ar-QA' : 'en-GB'
 
   /* Role as a status tag: the square carries the weight of the role. */
@@ -72,8 +80,8 @@ export default function TeamPage() {
           title={tr('Team members')}
           subtitle={tr('People with access to this organisation and their roles.')}
           actions={
-            canManageUsers ? (
-              <Button>
+            canInvite ? (
+              <Button onClick={() => setInviteOpen(true)}>
                 <Plus strokeWidth={1.5} className="h-4 w-4" />
                 {tr('Invite member')}
               </Button>
@@ -151,6 +159,14 @@ export default function TeamPage() {
             ))}
           </dl>
         </Card>
+        <InviteMemberDialog
+          open={inviteOpen}
+          onClose={() => setInviteOpen(false)}
+          organizationId={organizationId}
+          onInvited={() => {
+            void getTeamMembers(organizationId).then(setMembers)
+          }}
+        />
       </PageBody>
     </div>
   )

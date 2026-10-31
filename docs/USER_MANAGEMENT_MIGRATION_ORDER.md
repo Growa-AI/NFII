@@ -8,6 +8,7 @@ Apply in the SQL editor in this order:
 | 2 | `00032_unified_identity_authorization.sql` | Phase 2: staff_tier, legacy backfill, **5-column** `get_my_auth_capabilities` |
 | 3 | `00034_role_definitions_safe_rebuild.sql` | Legacy-safe `role_definitions` |
 | 4 | `00035_fix_get_my_auth_capabilities_signature.sql` | Optional repair if you applied an old 00031/00032 out of order |
+| 5 | `00037_phase3_account_lifecycle.sql` | Phase 3 invitations & account status |
 
 Skip `00033` (no-op placeholder).
 

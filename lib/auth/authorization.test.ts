@@ -28,6 +28,11 @@ describe('selectValidatedActiveOrganizationId', () => {
     const single = [{ organizationId: 'org-only', role: 'viewer', status: 'active' }]
     expect(selectValidatedActiveOrganizationId(single, null, null)).toBe('org-only')
   })
+
+  it('does not auto-select invited-only membership', () => {
+    const invitedOnly = [{ organizationId: 'org-pending', role: 'viewer', status: 'invited' }]
+    expect(selectValidatedActiveOrganizationId(invitedOnly, null, null)).toBeNull()
+  })
 })
 
 describe('resolveAuthorization', () => {

@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server'
 import { buildSessionContext } from '@/lib/auth/authorization-service'
 import { resolveActiveMembership } from '@/lib/auth/authorization'
+import { writeSecurityAudit } from '@/lib/auth/audit-server'
 
 export const dynamic = 'force-dynamic'
 
@@ -35,6 +36,14 @@ export async function POST(request: Request) {
   if (!refreshed.payload) {
     return NextResponse.json({ error: 'Unable to refresh session context' }, { status: 500 })
   }
+
+  await writeSecurityAudit({
+    actorId: session.payload.userId,
+    organizationId,
+    action: 'organization_switched',
+    resourceType: 'organization',
+    resourceId: organizationId,
+  })
 
   return NextResponse.json({
     activeOrganizationId: organizationId,

@@ -9,13 +9,16 @@ import {
 import type { PermissionKey } from '@/lib/auth/capabilities'
 import { authorize } from '@/lib/auth/authorization'
 import type { PlatformStaffTier } from '@/lib/auth/role-registry'
+import { accountStatusBlocksSession, normalizeAccountStatus, type AccountStatus } from '@/lib/auth/account-status'
 
 export interface SessionContextPayload {
   userId: string
+  accountStatus: AccountStatus
   memberships: MembershipRecord[]
   activeOrganizationId: string | null
   authorization: ResolvedAuthorization
   requiresOrganizationSelection: boolean
+  pendingInvitationAcceptance: boolean
 }
 
 async function loadPlatformStaffTier(
@@ -100,6 +103,17 @@ export async function buildSessionContext(options: {
     return { payload: null, status: 401, error: 'Unauthorized' }
   }
 
+  const { data: profileRow } = await supabase
+    .from('profiles')
+    .select('account_status')
+    .eq('id', user.id)
+    .maybeSingle()
+
+  const accountStatus = normalizeAccountStatus(profileRow?.account_status as string | undefined)
+  if (accountStatusBlocksSession(accountStatus)) {
+    return { payload: null, status: 403, error: 'Account is not active' }
+  }
+
   const canonical = await loadCanonicalMemberships(supabase, user.id)
   const legacy = await loadLegacyMemberships(supabase, user.id)
   const memberships = mergeMembershipLists(canonical, legacy)
@@ -133,15 +147,20 @@ export async function buildSessionContext(options: {
   }
 
   const authorization = resolveAuthorization(authContext)
-  const activeCount = memberships.filter((m) => (m.status ?? 'active') !== 'inactive').length
+  const activeCount = memberships.filter((m) => (m.status ?? 'active') === 'active').length
+  const pendingInvitationAcceptance = memberships.some(
+    (m) => (m.status ?? '').toLowerCase() === 'invited'
+  )
 
   return {
     payload: {
       userId: user.id,
+      accountStatus,
       memberships,
       activeOrganizationId,
       authorization,
       requiresOrganizationSelection: activeCount > 1 && !activeOrganizationId,
+      pendingInvitationAcceptance,
     },
     status: 200,
   }
