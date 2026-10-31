@@ -9,6 +9,7 @@ import {
   ministryProfileForRole,
   type MinistryRoleProfile,
 } from '@/lib/navigation/registry'
+import { filterNavByPermissions } from '@/lib/navigation/admin-nav-filter'
 
 interface RoleState {
   effectiveRole: string | null
@@ -75,7 +76,24 @@ export function useRoleNavigation() {
   ])
 
   return useMemo(() => {
-    const navigation = buildNavigation(role.effectiveRole, role.roleProfile)
+    const base = buildNavigation(role.effectiveRole, role.roleProfile)
+    const hasPermission = activeOrg?.hasPermission ?? (() => false)
+    const filteredItems = filterNavByPermissions(base.items, hasPermission, {
+      isPlatformStaff: Boolean(activeOrg?.platformStaffTier),
+    })
+    const grouped = base.areas
+      .map((area) => ({
+        area,
+        items: filteredItems.filter((item) => item.area === area.id),
+      }))
+      .filter((g) => g.items.length > 0)
+
+    const navigation = {
+      ...base,
+      items: filteredItems,
+      grouped,
+    }
+
     return {
       ...role,
       navigation,
@@ -84,5 +102,5 @@ export function useRoleNavigation() {
       error,
       isMinistryWorkspace: role.roleProfile !== null,
     }
-  }, [role, isLoading, activeOrg?.loading, error])
+  }, [role, isLoading, activeOrg?.loading, activeOrg?.hasPermission, activeOrg?.platformStaffTier, error])
 }

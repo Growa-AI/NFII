@@ -319,20 +319,29 @@ export function useSettings() {
   const handleInvite = async (e: React.FormEvent) => {
     e.preventDefault()
     if (!organization?.id || !inviteEmail.trim()) return
-
     setSaving(true)
     setError(null)
-    setMessage(null)
-    const result = await addMemberByEmail(organization.id, inviteEmail.trim(), inviteRole)
-    if (!result.success) {
-      setError(result.error || tr('Unable to add member. Ensure the user has already registered.'))
-    } else {
-      setMessage(tr('Member added successfully.'))
+    try {
+      const res = await fetch('/api/invitations', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          organizationId: organization.id,
+          email: inviteEmail.trim(),
+          role: inviteRole,
+        }),
+      })
+      const data = await res.json()
+      if (!res.ok) {
+        setError(data.error ?? tr('Unable to add member. Ensure the user has already registered.'))
+        return
+      }
+      setMessage(tr('Invitation sent.'))
       setInviteEmail('')
-      setInviteRole('member')
       await refreshMembers()
+    } finally {
+      setSaving(false)
     }
-    setSaving(false)
   }
 
   const handleSavePreferences = async () => {

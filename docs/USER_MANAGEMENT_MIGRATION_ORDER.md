@@ -9,6 +9,7 @@ Apply in the SQL editor in this order:
 | 3 | `00034_role_definitions_safe_rebuild.sql` | Legacy-safe `role_definitions` |
 | 4 | `00035_fix_get_my_auth_capabilities_signature.sql` | Optional repair if you applied an old 00031/00032 out of order |
 | 5 | `00037_phase3_account_lifecycle.sql` | Phase 3 invitations & account status |
+| 6 | `00038_organizations_is_active.sql` | Phase 4 org activate/deactivate flag |
 
 Skip `00033` (no-op placeholder).
 
