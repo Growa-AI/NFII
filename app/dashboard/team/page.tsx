@@ -16,7 +16,7 @@ import { StatusTag, humanize } from '@/components/brand/status'
 import { ASSIGNABLE_ORG_ROLES } from '@/lib/auth/assignable-org-roles'
 
 export default function TeamPage() {
-  const { tr, locale } = useI18n()
+  const { tr } = useI18n()
   const confirmDialog = useConfirm()
   const { user } = useAuth()
   const { organization } = useOrganization()
@@ -66,7 +66,6 @@ export default function TeamPage() {
     return Array.from(roles).sort()
   }, [users])
 
-  const dateLocale = locale === 'ar' ? 'ar-QA' : 'en-GB'
 
   if (!canView) {
     return (
