@@ -83,3 +83,17 @@ GitHub CI runs ESLint, Vitest unit tests, \`tsc --noEmit\` and Next.js build. In
 - In all modules, EN/AR copy, focus, contrast, keyboard and narrow viewport behavior are acceptable.
 
 **Do not claim live national authority data, physical dispatch, verified deliveries or completed financial procurement solely on the basis of these records.**
+
+
+## Watchtower interaction design
+
+The Watchtower uses **three primary tabs**, rather than a long undifferentiated stack:
+
+- **Food situation & risk**: reviewed commodity balances and deterministic procurement-investigation priority.
+- **Supply operations**: records and shortcuts for Procurement, Logistics and Strategic Reserves.
+- **Scenario room**: read-only disruption sensitivity analysis.
+
+Tabs have explicit active states, keyboard-accessible native buttons and deep-link hashes
+(\`#watchtower-food\`, \`#watchtower-operations\`, \`#watchtower-scenarios\`).
+The old \`/dashboard/supply-overview\` route redirects to \`#watchtower-operations\`,
+rather than rendering demo supply figures.

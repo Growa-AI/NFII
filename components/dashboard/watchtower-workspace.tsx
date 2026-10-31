@@ -1,6 +1,7 @@
 'use client'
 
 import Link from 'next/link'
+import { useEffect, useState } from 'react'
 import {
   ArrowUpRight, Building2, FlaskConical, Network, ShieldCheck, Wheat,
 } from 'lucide-react'
@@ -24,11 +25,32 @@ export function WatchtowerWorkspace() {
   const ar = locale === 'ar'
   const tx = (english: string, arabic: string) => ar ? arabic : english
 
+  type Section = 'food' | 'operations' | 'scenarios'
+  const [activeSection, setActiveSection] = useState<Section>('food')
+  useEffect(() => {
+    function syncSectionFromHash() {
+      const hash = window.location.hash
+      if (hash === '#watchtower-operations') setActiveSection('operations')
+      else if (hash === '#watchtower-scenarios') setActiveSection('scenarios')
+      else if (hash === '#watchtower-response' || hash === '#watchtower-food')
+        setActiveSection('food')
+    }
+    syncSectionFromHash()
+    window.addEventListener('hashchange', syncSectionFromHash)
+    return () => window.removeEventListener('hashchange', syncSectionFromHash)
+  }, [])
+
+  function selectSection(section: Section) {
+    setActiveSection(section)
+    const hash = section === 'food' ? '#watchtower-food'
+      : section === 'operations' ? '#watchtower-operations' : '#watchtower-scenarios'
+    window.history.replaceState(null, '', hash)
+  }
+
   const sections = [
-    { id: 'watchtower-food', name: tx('Food situation', 'الوضع الغذائي'), icon: Wheat },
-    { id: 'watchtower-response', name: tx('Procurement & risk', 'المشتريات والمخاطر'), icon: Network },
-    { id: 'watchtower-operations', name: tx('Supply network', 'شبكة الإمداد'), icon: Network },
-    { id: 'watchtower-scenarios', name: tx('Scenario room', 'غرفة السيناريوهات'), icon: FlaskConical },
+    { id: 'food' as const, name: tx('Food situation & risk', 'الوضع الغذائي والمخاطر'), icon: Wheat },
+    { id: 'operations' as const, name: tx('Supply operations', 'عمليات الإمداد'), icon: Network },
+    { id: 'scenarios' as const, name: tx('Scenario room', 'غرفة السيناريوهات'), icon: FlaskConical },
   ] as const
 
   return (
@@ -78,22 +100,21 @@ export function WatchtowerWorkspace() {
             </div>
 
             <div className="flex flex-wrap items-center gap-1.5 border-t border-[#294058] pt-4">
-              {sections.map((section, index) => {
+              {sections.map((section) => {
                 const Icon = section.icon
                 return (
-                  <a
-                    key={section.id}
-                    href={'#' + section.id}
+                  <button key={section.id} type="button"
+                    aria-pressed={activeSection === section.id}
+                    onClick={() => selectSection(section.id)}
                     className={
                       'inline-flex items-center gap-2 rounded-sm border px-3 py-2 text-[11px] font-medium transition-colors hover:border-[#70c0a0] hover:text-white ' +
-                      (index === 0
-                        ? 'border-[#46687a] bg-[#213c4c] text-[#d1eee1]'
+                      (activeSection === section.id
+                        ? 'border-[#70c0a0] bg-[#173a38] text-[#d1eee1]'
                         : 'border-[#284259] bg-[#12263a] text-[#aec1d6]')
-                    }
-                  >
+                    }>
                     <Icon className="h-3.5 w-3.5" strokeWidth={1.6} aria-hidden="true" />
                     {section.name}
-                  </a>
+                  </button>
                 )
               })}
               <Link href="/dashboard/procurement"
@@ -117,11 +138,9 @@ export function WatchtowerWorkspace() {
           </div>
         </header>
 
-        <WatchtowerFoodCommandCenter />
-
-        <WatchtowerOperationsPulse />
-
-        <WatchtowerScenarioRoom />
+        {activeSection === 'food' && <WatchtowerFoodCommandCenter />}
+        {activeSection === 'operations' && <WatchtowerOperationsPulse />}
+        {activeSection === 'scenarios' && <WatchtowerScenarioRoom />}
 
         <footer className="flex flex-wrap items-start gap-2 border-t border-dotted border-line pt-3 text-[11px] text-content-soft">
           <ShieldCheck className="mt-0.5 h-3.5 w-3.5 shrink-0" aria-hidden="true" />
