@@ -167,6 +167,9 @@ GRANT EXECUTE ON FUNCTION public.count_org_owners(UUID) TO authenticated;
 -- -----------------------------------------------------------------------------
 -- Membership context (never applies role preview / impersonation)
 -- -----------------------------------------------------------------------------
+DROP FUNCTION IF EXISTS public.get_membership_role_context();
+DROP FUNCTION IF EXISTS public.get_effective_role();
+
 CREATE OR REPLACE FUNCTION public.get_membership_role_context()
 RETURNS TABLE (
   role_name TEXT,
@@ -276,47 +279,22 @@ BEGIN
 END;
 $$;
 
-CREATE OR REPLACE FUNCTION public.get_my_auth_capabilities()
-RETURNS TABLE (
-  is_platform_admin BOOLEAN,
-  role_preview_active BOOLEAN,
-  preview_role TEXT,
-  preview_org_id UUID
-)
-LANGUAGE plpgsql
-STABLE
-SECURITY DEFINER
-SET search_path = public
-AS $$
-DECLARE
-  v_uid UUID := auth.uid();
-  v_preview RECORD;
-BEGIN
-  IF v_uid IS NULL THEN
-    RETURN;
-  END IF;
-
-  SELECT s.role_name, s.org_id, s.is_impersonating
-  INTO v_preview
-  FROM public.user_impersonation_state s
-  WHERE s.user_id = v_uid
-  LIMIT 1;
-
-  RETURN QUERY
-  SELECT
-    public.is_platform_admin(v_uid),
-    COALESCE(v_preview.is_impersonating, FALSE) AND public.is_platform_admin(v_uid),
-    CASE WHEN COALESCE(v_preview.is_impersonating, FALSE) THEN v_preview.role_name ELSE NULL END,
-    CASE WHEN COALESCE(v_preview.is_impersonating, FALSE) THEN v_preview.org_id ELSE NULL END;
-END;
-$$;
+-- get_my_auth_capabilities: defined in 00032 / 00035 (5 columns incl. platform_staff_tier).
+-- Do not CREATE here — avoids 42P13 when 00035 or 00032 was applied first.
 
 REVOKE ALL ON FUNCTION public.get_membership_role_context() FROM PUBLIC;
 REVOKE ALL ON FUNCTION public.get_effective_role() FROM PUBLIC;
-REVOKE ALL ON FUNCTION public.get_my_auth_capabilities() FROM PUBLIC;
 GRANT EXECUTE ON FUNCTION public.get_membership_role_context() TO authenticated;
 GRANT EXECUTE ON FUNCTION public.get_effective_role() TO authenticated;
-GRANT EXECUTE ON FUNCTION public.get_my_auth_capabilities() TO authenticated;
+
+DO $$
+BEGIN
+  IF to_regprocedure('public.get_my_auth_capabilities()') IS NOT NULL THEN
+    REVOKE ALL ON FUNCTION public.get_my_auth_capabilities() FROM PUBLIC;
+    GRANT EXECUTE ON FUNCTION public.get_my_auth_capabilities() TO authenticated;
+  END IF;
+END
+$$;
 
 -- -----------------------------------------------------------------------------
 -- Role preview (formerly impersonation) — platform admins only; UI context

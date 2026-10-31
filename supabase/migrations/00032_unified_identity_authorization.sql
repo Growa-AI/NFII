@@ -1,11 +1,15 @@
 -- Phase 2: unified identity, organization, and permission model (compatibility layer).
 
--- Platform staff tiers (separate from organization administration).
-ALTER TABLE public.platform_admins
-  ADD COLUMN IF NOT EXISTS staff_tier TEXT NOT NULL DEFAULT 'super_admin';
-
+-- Platform staff tiers (requires 00031 platform_admins).
 DO $$
 BEGIN
+  IF to_regclass('public.platform_admins') IS NULL THEN
+    RAISE EXCEPTION 'Run 00031_user_management_security_hardening.sql before 00032';
+  END IF;
+
+  ALTER TABLE public.platform_admins
+    ADD COLUMN IF NOT EXISTS staff_tier TEXT NOT NULL DEFAULT 'super_admin';
+
   IF NOT EXISTS (
     SELECT 1 FROM pg_constraint
     WHERE conname = 'platform_admins_staff_tier_check'
@@ -51,6 +55,8 @@ AS $$
     ELSE 'viewer'
   END;
 $$;
+
+DROP FUNCTION IF EXISTS public.list_legacy_memberships_for_user(UUID);
 
 CREATE OR REPLACE FUNCTION public.list_legacy_memberships_for_user(p_user_id UUID)
 RETURNS TABLE (organization_id UUID, role TEXT, status TEXT)
@@ -105,8 +111,10 @@ BEGIN
 END
 $$;
 
--- Extend auth capabilities RPC with platform staff tier.
+-- Auth capabilities RPC (5 columns). DROP required when upgrading from 00031 four-column version.
+-- Same body as 00035_fix_get_my_auth_capabilities_signature.sql (safe to re-run 00035 after this).
 DROP FUNCTION IF EXISTS public.get_my_auth_capabilities();
+
 CREATE OR REPLACE FUNCTION public.get_my_auth_capabilities()
 RETURNS TABLE (
   is_platform_admin BOOLEAN,
@@ -149,6 +157,9 @@ BEGIN
     CASE WHEN COALESCE(v_preview.is_impersonating, FALSE) THEN v_preview.org_id ELSE NULL END;
 END;
 $$;
+
+REVOKE ALL ON FUNCTION public.get_my_auth_capabilities() FROM PUBLIC;
+GRANT EXECUTE ON FUNCTION public.get_my_auth_capabilities() TO authenticated;
 
 -- Organization type consolidation helper (read path prefers organization_type).
 CREATE OR REPLACE FUNCTION public.organization_type_value(p_org public.organizations)
