@@ -269,6 +269,62 @@ export function WatchtowerScenarioRoom() {
                   </div>
                 ))}
               </div>
+              {hasShocks && scenario?.status === 'complete' && (
+                <div className="rounded-lg border border-[#29435d] bg-[#0b1b2c] p-3 text-[#e8eff8]">
+                  <div className="flex flex-wrap items-center justify-between gap-2">
+                    <p className="text-[12px] font-semibold">
+                      {tx('Response assessment playbook', 'خطة تقييم الاستجابة')}
+                    </p>
+                    <span className="rounded-sm border border-[#65758c] px-2 py-0.5 text-[9px] text-[#b6c9d8]">
+                      {tx('DRAFT · NOT DISPATCHED', 'مسودة · لم تُرسل')}
+                    </span>
+                  </div>
+                  <p className="mt-1 text-[11px] text-[#a7b9cf]">
+                    {(scenario.totals.scenarioDeficitTonnes ?? 0) > 0
+                      ? tx(
+                        'The selected shock creates a simulated deficit. Review the decision sequence before any procurement or reserve-release authorization.',
+                        'يؤدي السيناريو المختار إلى عجز افتراضي. راجع تسلسل القرار قبل الموافقة على الشراء أو صرف المخزون.',
+                      )
+                      : tx(
+                        'No simulated period-end deficit under these assumptions. Validate scenario inputs and interim delivery timing before drawing conclusions.',
+                        'لا يظهر عجز افتراضي بنهاية الفترة وفق هذه الافتراضات. تحقّق من المدخلات ومواعيد التسليم قبل الاستنتاج.',
+                      )}
+                  </p>
+                  <ol className="mt-3 grid gap-2 sm:grid-cols-2">
+                    {[
+                      {
+                        en: 'Validate source quality and shock assumptions',
+                        ar: 'التحقق من جودة المصادر وافتراضات الاضطراب',
+                      },
+                      {
+                        en: 'Compare supplier quotes, lead times and trade corridors once integrated',
+                        ar: 'مقارنة عروض الموردين والمهل والممرات التجارية بعد ربطها',
+                      },
+                      {
+                        en: 'Inspect lot-level usable reserves and release constraints once integrated',
+                        ar: 'فحص الاحتياطيات حسب الدفعات وقيود الصرف بعد ربطها',
+                      },
+                      {
+                        en: 'Submit the reviewed response to authorized human decision makers',
+                        ar: 'رفع الاستجابة المُراجعة إلى متخذي القرار المخولين',
+                      },
+                    ].map((task, index) => (
+                      <li key={task.en} className="flex items-start gap-2 rounded-md border border-[#30455c] bg-[#12283c] p-2 text-[11px] text-[#cbd8e8]">
+                        <span className="inline-flex h-5 w-5 shrink-0 items-center justify-center rounded-sm border border-[#4c6884] text-[10px] text-[#80c6aa]">
+                          {index + 1}
+                        </span>
+                        <span>{tx(task.en, task.ar)}</span>
+                      </li>
+                    ))}
+                  </ol>
+                  <p className="mt-2 text-[10px] text-[#9cacc2]">
+                    {tx(
+                      'This checklist is guidance only. No tender, approval case, purchase, reserve movement or dispatch has been created.',
+                      'هذه قائمة إرشادية فقط. لم يُنشأ أي عطاء أو طلب موافقة أو شراء أو حركة مخزون أو أمر إرسال.',
+                    )}
+                  </p>
+                </div>
+              )}
               {hasShocks && scenario?.totals.changeInBalanceTonnes !== null && (
                 <p className="text-[12px] text-content-soft">
                   {tx('Change in projected balance', 'التغير في الرصيد المتوقع')}: {' '}

@@ -6,6 +6,7 @@ import { AlertTriangle, ArrowUpRight, Database, RefreshCw, ShieldCheck, Wheat } 
 import { useI18n } from '@/lib/i18n'
 import { useOrganization } from '@/hooks/use-organization'
 import type { FoodPosture, FoodPostureCommodity, FoodRiskBand } from '@/lib/watchtower/food-posture'
+import { WatchtowerResilienceDesk } from '@/components/dashboard/watchtower/resilience-desk'
 
 const SCREENING_LABEL: Record<FoodRiskBand, { en: string; ar: string; css: string }> = {
   critical: { en: 'Critical', ar: 'حرج', css: 'bg-warning-soft text-warning-strong border-warning-line' },
@@ -128,6 +129,7 @@ export function WatchtowerFoodCommandCenter() {
 
   return (
     <section
+      id="watchtower-food"
       aria-label={tx('Food security command center', 'مركز قيادة الأمن الغذائي')}
       className="rounded-xl border border-line bg-card p-4 md:p-5 space-y-4"
     >
@@ -368,6 +370,8 @@ export function WatchtowerFoodCommandCenter() {
               </div>
             </div>
           </div>
+
+          <WatchtowerResilienceDesk posture={data} />
 
           <div className="flex flex-wrap items-start justify-between gap-2 border-t border-dotted border-line pt-3 text-[11px] text-content-soft">
             <p>{tx('Coverage bands: <7d critical, 7–13d high, 14–29d attention. Screening only.',
