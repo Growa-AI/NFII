@@ -56,7 +56,6 @@ export function FoodSourceIntake({
   const active = useActiveOrganizationOptional()
   const canEdit = active?.hasPermission('supply.edit') ?? false
   const canReview = active?.hasPermission('decisions.approve') ?? false
-  const userId = active?.memberships ? active?.activeOrganizationId : null
   // No personal user ID is taken from the browser for authorization.
   // Self-review is checked by the protected API and by its SQL trigger.
 
