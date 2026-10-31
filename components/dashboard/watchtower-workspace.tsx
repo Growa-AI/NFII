@@ -12,6 +12,7 @@ import { WatchtowerProductionSnapshot } from '@/components/dashboard/watchtower/
 import { NationalMapPanel } from '@/components/dashboard/watchtower/national-map-panel'
 import { GrowaIntelligencePanel } from '@/components/dashboard/growa-intelligence-panel'
 import { WatchtowerContextDeck } from '@/components/dashboard/watchtower/context-deck'
+import { WatchtowerFoodCommandCenter } from '@/components/dashboard/watchtower/food-command-center'
 import { buildWatchtowerGrowaContext } from '@/lib/ai/build-watchtower-growa-context'
 import { buildDashboardMapProps } from '@/lib/dashboard/map-navigation'
 import { partitionSignalsByPriority } from '@/lib/watchtower/signal-priority'
@@ -98,16 +99,31 @@ export function WatchtowerWorkspace() {
 
   if (loading && !summary) {
     return (
-      <div className="growa flex h-full items-center justify-center bg-background">
-        <LoadingState label={t('watchtower.loading')} />
+      <div className="growa h-full overflow-y-auto bg-background text-content">
+        <div className="mx-auto max-w-[1600px] space-y-4 p-6">
+          <WatchtowerFoodCommandCenter />
+          <div className="flex min-h-[180px] items-center justify-center rounded-xl border border-line bg-card">
+            <LoadingState label={t('watchtower.loading')} />
+          </div>
+        </div>
       </div>
     )
   }
 
   if (error && !summary) {
     return (
-      <div className="growa flex h-full items-center justify-center bg-background p-8">
-        <ErrorState message={error} onRetry={() => loadSummary()} retryLabel={t('common.retry')} className="max-w-sm w-full" />
+      <div className="growa h-full overflow-y-auto bg-background text-content">
+        <div className="mx-auto max-w-[1600px] space-y-4 p-6">
+          <WatchtowerFoodCommandCenter />
+          <div className="rounded-xl border border-line bg-card p-6">
+            <p className="mb-3 text-[12px] text-content-soft">
+              {locale === 'ar'
+                ? 'مصادر العمليات الزراعية القديمة غير متاحة حالياً؛ تظل مراقبة الأمن الغذائي مستقلة.'
+                : 'Legacy agriculture and weather sources are unavailable. Food security analysis remains independent.'}
+            </p>
+            <ErrorState message={error} onRetry={() => loadSummary()} retryLabel={t('common.retry')} className="max-w-sm w-full" />
+          </div>
+        </div>
       </div>
     )
   }
@@ -154,6 +170,19 @@ export function WatchtowerWorkspace() {
             {partialErrors.join(' · ')}
           </Notice>
         )}
+
+        <WatchtowerFoodCommandCenter />
+
+        <div className="border-t border-dotted border-line-strong pt-4">
+          <h2 className="text-[15px] font-medium text-content">
+            {locale === 'ar' ? 'رصد العمليات الزراعية والموارد' : 'Agriculture, resources & operational signals'}
+          </h2>
+          <p className="mt-1 text-[11px] text-content-soft">
+            {locale === 'ar'
+              ? 'مصادر تشغيلية مؤشرة وقد تشمل بيانات تجريبية؛ ليست بديلاً عن الميزان الغذائي الموثق.'
+              : 'Existing operational and harvest sources may include illustrative or partial coverage; they are separate from reviewed food balances.'}
+          </p>
+        </div>
 
         <WatchtowerProductionSnapshot
           production={summary.production}
