@@ -4,12 +4,8 @@ import Link from 'next/link'
 import {
   AlertTriangle,
   ArrowUpRight,
-  Boxes,
   ClipboardCheck,
   DatabaseZap,
-  Network,
-  PackageSearch,
-  Route,
   ShieldAlert,
 } from 'lucide-react'
 import { useI18n } from '@/lib/i18n'
@@ -38,36 +34,6 @@ function formatTonnes(value: number | null): string {
     ? '—'
     : value.toLocaleString('en-US', { maximumFractionDigits: 1 })
 }
-
-const CONNECTIONS = [
-  {
-    icon: Route,
-    en: 'Ports & trade corridors',
-    ar: 'الموانئ وممرات التجارة',
-    enStatus: 'Not linked to verified food balance',
-    arStatus: 'غير متصلة بميزان الغذاء المُراجع',
-    enInfo: 'No vessel position, ETA, disruption or rerouting feed in this model.',
-    arInfo: 'لا تتوفر في هذا النموذج حركة السفن أو الوصول المتوقع أو الاضطرابات أو إعادة التوجيه.',
-  },
-  {
-    icon: PackageSearch,
-    en: 'Procurement & suppliers',
-    ar: 'المشتريات والموردون',
-    enStatus: 'Procurement decision support only',
-    arStatus: 'دعم القرار الشرائي فقط',
-    enInfo: 'No authenticated tender, RFQ, supplier price or landed-cost records linked yet.',
-    arInfo: 'لا توجد بعد عروض أسعار أو مناقصات أو أسعار موردين أو تكاليف وصول موثقة مرتبطة.',
-  },
-  {
-    icon: Boxes,
-    en: 'Reserves & warehouses',
-    ar: 'الاحتياطيات والمستودعات',
-    enStatus: 'Aggregate stocks only',
-    arStatus: 'المخزون الإجمالي فقط',
-    enInfo: 'Usable inventory snapshots exist; lot, expiry, depot and release data are not integrated.',
-    arInfo: 'تتوفر أرصدة إجمالية؛ لم تُدمج بعد بيانات الدفعات والصلاحية والمستودعات والصرف.',
-  },
-] as const
 
 function actionText(
   action: ResilienceAction,
@@ -118,7 +84,7 @@ export function WatchtowerResilienceDesk({ posture }: { posture: FoodPosture }) 
 
   return (
     <section id="watchtower-response" aria-label={tx('Resilience decision desk', 'مكتب قرارات المرونة')}
-      className="rounded-xl border border-[#213249] bg-[#081525] px-4 py-4 text-[#e8eff9] md:px-5 md:py-5">
+      className="rounded-xl border border-[#22303f] bg-[#040a14] px-4 py-4 text-[#e8eff9] md:px-5 md:py-5">
       <div className="flex flex-wrap items-start justify-between gap-3 border-b border-[#22364d] pb-4">
         <div>
           <p className="text-[10px] font-semibold uppercase tracking-[0.18em] text-[#70c0a0]">
@@ -260,39 +226,6 @@ export function WatchtowerResilienceDesk({ posture }: { posture: FoodPosture }) 
               </strong>
             </p>
           </div>
-        </div>
-      </div>
-
-      <div className="mt-4 border-t border-[#22364d] pt-4">
-        <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
-          <h4 className="flex items-center gap-2 text-[12px] font-semibold">
-            <Network className="h-4 w-4 text-[#70c0a0]" />
-            {tx('National supply-chain integration readiness', 'جاهزية تكامل سلسلة الإمداد الوطنية')}
-          </h4>
-          <span className="rounded-sm border border-[#3d5876] px-2 py-1 text-[9px] font-semibold text-[#b5c9df]">
-            {tx('DATA CONNECTIONS · NO MOCK FEEDS', 'وصلات البيانات · دون مصادر وهمية')}
-          </span>
-        </div>
-        <div className="grid gap-2 lg:grid-cols-3">
-          {CONNECTIONS.map(item => {
-            const Icon = item.icon
-            return (
-              <div key={item.en} className="rounded-md border border-[#253b54] bg-[#101f34] p-3">
-                <div className="flex items-start gap-2">
-                  <Icon className="mt-0.5 h-4 w-4 shrink-0 text-[#78a8f0]" strokeWidth={1.5} />
-                  <div className="min-w-0">
-                    <p className="text-[12px] font-semibold text-[#e9eff8]">{tx(item.en, item.ar)}</p>
-                    <span className="mt-1 inline-flex rounded-sm border border-[#53627a] px-1.5 py-0.5 text-[9px] text-[#bdcadb]">
-                      {tx(item.enStatus, item.arStatus)}
-                    </span>
-                  </div>
-                </div>
-                <p className="mt-3 text-[11px] leading-relaxed text-[#9cacc2]">
-                  {tx(item.enInfo, item.arInfo)}
-                </p>
-              </div>
-            )
-          })}
         </div>
       </div>
 

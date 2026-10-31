@@ -1,0 +1,188 @@
+'use client'
+
+import { useEffect, useMemo, useState } from 'react'
+import Link from 'next/link'
+import { ArrowUpRight, Boxes, ClipboardCheck, RefreshCw, Ship, ShoppingBag } from 'lucide-react'
+import { useOrganization } from '@/hooks/use-organization'
+import { useI18n } from '@/lib/i18n'
+import {
+  reservePosition, operationalVolume, type OperationsResponse,
+  type OperationsSnapshot,
+} from '@/lib/nfii/operations-types'
+
+function todayQatar(): string {
+  const parts=new Intl.DateTimeFormat('en-US',{
+    timeZone:'Asia/Qatar',day:'2-digit',month:'2-digit',year:'numeric',
+  }).formatToParts(new Date())
+  const part=(t:string)=>parts.find(p=>p.type===t)?.value??''
+  return part('year')+'-'+part('month')+'-'+part('day')
+}
+function pretty(n:number):string {
+  return n.toLocaleString('en-US',{maximumFractionDigits:1})
+}
+
+/** No synthetic data. User-scope auth remains checked by the API. */
+export function WatchtowerOperationsPulse(){
+  const {organization,loading:orgLoading}=useOrganization()
+  const {locale}=useI18n()
+  const ar=locale==='ar'
+  const tx=(en:string,arabic:string)=>ar?arabic:en
+  const orgId=organization?.id??null
+  const [snapshot,setSnapshot]=useState<OperationsSnapshot|null>(null)
+  const [loading,setLoading]=useState(false)
+  const [error,setError]=useState('')
+  const [refresh,setRefresh]=useState(0)
+  const [truncated,setTruncated]=useState(false)
+
+  useEffect(()=>{
+    setSnapshot(null);setError('');setTruncated(false)
+    if(!orgId||orgLoading){setLoading(false);return}
+    const controller=new AbortController()
+    const run=async()=>{
+      setLoading(true)
+      try {
+        const response=await fetch('/api/nfii/operations?'+new URLSearchParams({organizationId:orgId}),{
+          cache:'no-store',signal:controller.signal,
+        })
+        const body:(Partial<OperationsResponse>&{error?:string})=await response.json()
+        if(!response.ok)throw Error(body.error??'Operational source unavailable')
+        if(body.organizationId!==orgId||body.scope!=='organization'||!body.snapshot)
+          throw Error('Unexpected operational data scope')
+        if(!controller.signal.aborted){
+          setSnapshot(body.snapshot)
+          setTruncated((body.limits?.truncated.length??0)>0)
+        }
+      }catch(err){
+        if(!controller.signal.aborted)setError(err instanceof Error?err.message:'Unavailable')
+      }finally{if(!controller.signal.aborted)setLoading(false)}
+    }
+    void run()
+    return ()=>controller.abort()
+  },[orgId,orgLoading,refresh])
+
+  const metrics=useMemo(()=>{
+    if(!snapshot)return null
+    const reserve=reservePosition(snapshot,todayQatar())
+    return {
+      approvedSuppliers:snapshot.suppliers.filter(r=>r.status==='approved').length,
+      approvedOrders:snapshot.purchaseOrders.filter(r=>r.status==='approved').length,
+      inTransit:snapshot.shipments.filter(r=>r.status==='in_transit'||r.status==='delayed').length,
+      pendingApprovals:snapshot.approvals.filter(r=>r.status==='pending').length,
+      physicalReserveTonnes:reserve.availablePhysicalTonnes,
+      uncommittedTonnes:reserve.uncommittedTonnes,
+      orderedTonnes:snapshot.purchaseOrders.filter(r=>r.status==='approved')
+        .reduce((sum,r)=>sum+operationalVolume(r.ordered_tonnes),0),
+    }
+  },[snapshot])
+
+  const modules=[
+    {
+      href:'/dashboard/procurement',en:'Procurement',ar:'المشتريات',
+      detailEn:'Supplier → contract → approved purchase order',
+      detailAr:'المورد ← العقد ← أمر الشراء المعتمد',icon:ShoppingBag,
+      value:metrics?String(metrics.approvedOrders):null,
+      unitEn:'approved orders',unitAr:'أوامر معتمدة',
+    },
+    {
+      href:'/dashboard/logistics',en:'Logistics',ar:'الخدمات اللوجستية',
+      detailEn:'Approved order → shipment → delivery event',
+      detailAr:'أمر معتمد ← الشحنة ← إثبات التسليم',icon:Ship,
+      value:metrics?String(metrics.inTransit):null,
+      unitEn:'active / delayed',unitAr:'نشطة / متأخرة',
+    },
+    {
+      href:'/dashboard/reserves',en:'Strategic reserves',ar:'الاحتياطيات الاستراتيجية',
+      detailEn:'Delivered shipment → approved lot → release',
+      detailAr:'شحنة مستلمة ← دفعة معتمدة ← صرف',icon:Boxes,
+      value:metrics?pretty(metrics.uncommittedTonnes):null,
+      unitEn:'t uncommitted',unitAr:'طن غير مخصص',
+    },
+  ] as const
+
+  return (
+    <section id="watchtower-operations" aria-label={tx('Supply chain operations', 'عمليات سلسلة الإمداد')}
+      className="nfii-panel p-4 md:p-5">
+      <div className="flex flex-wrap items-start justify-between gap-3">
+        <div>
+          <p className="nfii-label !text-[#c8a860]">{tx('OPERATIONS / SOURCE-BACKED','العمليات / مصادر موثقة')}</p>
+          <h2 className="mt-1 text-[18px] font-semibold text-[#f0f0f0]">
+            {tx('Operational supply network', 'شبكة الإمداد التشغيلية')}
+          </h2>
+          <p className="mt-1 text-[11px] text-[#9aabc1]">
+            {tx(
+              'Connected records across purchasing, shipment tracking, warehouses and approved reserve movements.',
+              'سجلات مترابطة للمشتريات وتتبع الشحنات والمستودعات وحركات المخزون المعتمدة.'
+            )}
+          </p>
+        </div>
+        <button type="button" className="nfii-button nfii-button-secondary"
+          onClick={()=>setRefresh(n=>n+1)} disabled={loading||!orgId}>
+          <RefreshCw className={'h-3.5 w-3.5 '+(loading?'animate-spin':'')}/>
+          {tx('Refresh records','تحديث السجلات')}
+        </button>
+      </div>
+
+      {truncated&&<p role="status" className="mt-3 text-[11px] text-[#e3b57d]">
+        {tx('Records exceed the per-table display limit; summary totals may be incomplete.',
+          'تجاوزت السجلات حد العرض؛ قد تكون الإجماليات غير مكتملة.')}
+      </p>}
+      {orgLoading||loading?(
+        <p role="status" className="mt-4 text-[12px] text-[#9ab0c6]">
+          {tx('Loading operational data…','جارٍ تحميل البيانات التشغيلية…')}
+        </p>
+      ):!orgId?(
+        <p className="mt-4 text-[12px] text-[#9ab0c6]">
+          {tx('Select an authorized organization.','اختر مؤسسة مخولة.')}
+        </p>
+      ):error?(
+        <div className="mt-4 rounded-sm border border-[#846b48] bg-[#241e16] p-3 text-[12px] text-[#d9bc94]">
+          {tx('Operational data unavailable: ','البيانات التشغيلية غير متاحة: ')}{error}
+          <p className="mt-1 text-[11px]">
+            {tx('Migration 00041 must be applied; no values are substituted.',
+              'يجب تطبيق الترحيل 00041؛ لا يتم استبدال القيم بأرقام افتراضية.')}
+          </p>
+        </div>
+      ):(
+        <div className="mt-4 flex flex-wrap gap-3">
+          <span className="inline-flex items-center gap-1.5 rounded-sm border border-[#365e51] bg-[#102c27] px-2.5 py-1.5 text-[10px] text-[#a0dcc4]">
+            <ClipboardCheck className="h-3.5 w-3.5"/>
+            {metrics?.pendingApprovals??'—'} {tx('pending independent approvals','موافقات مستقلة معلقة')}
+          </span>
+          <span className="inline-flex items-center rounded-sm border border-[#3f526a] bg-[#122338] px-2.5 py-1.5 text-[10px] text-[#bdcfe1]">
+            {tx('Physical reserve balance: ','رصيد المخزون الفعلي: ')}
+            {metrics?pretty(metrics.physicalReserveTonnes):'—'} t
+          </span>
+        </div>
+      )}
+
+      <div className="mt-4 grid gap-3 md:grid-cols-3">
+        {modules.map(item=>{
+          const Icon=item.icon
+          return <Link key={item.href} href={item.href}
+            className="nfii-subpanel group flex min-h-[125px] flex-col justify-between p-3.5 hover:border-[#70c0a0]">
+            <div className="flex items-start justify-between gap-3">
+              <Icon className="h-5 w-5 text-[#78a8f0]" strokeWidth={1.5}/>
+              <ArrowUpRight className="h-4 w-4 text-[#7e95af] group-hover:text-[#70c0a0]"/>
+            </div>
+            <div>
+              <div className="flex items-baseline gap-2">
+                <p className="text-[13px] font-semibold text-[#f0f0f0]">{tx(item.en,item.ar)}</p>
+                <span className="font-mono text-[15px] text-[#c8a860]">
+                  {item.value??'—'}
+                </span>
+              </div>
+              <p className="mt-0.5 text-[10px] text-[#9bafc4]">{tx(item.unitEn,item.unitAr)}</p>
+              <p className="mt-2 text-[11px] text-[#b1c0d3]">{tx(item.detailEn,item.detailAr)}</p>
+            </div>
+          </Link>
+        })}
+      </div>
+      <p className="mt-3 text-[10px] leading-relaxed text-[#889eb5]">
+        {tx(
+          'Operator-entered and independently reviewed operational records. No customs API, live port telemetry, payment instruction or cross-agency national aggregation. These quantities are not silently merged into the Food Balance.',
+          'سجلات تشغيلية أدخلها المستخدمون وتخضع للمراجعة المستقلة. لا يوجد ربط مباشر بالجمارك أو الموانئ أو المدفوعات أو تجميع وطني بين الجهات. لا تُدمج هذه الكميات تلقائياً في الميزان الغذائي.'
+        )}
+      </p>
+    </section>
+  )
+}

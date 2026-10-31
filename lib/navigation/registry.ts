@@ -159,11 +159,29 @@ const NAV: ProductNavItem[] = [
 
   // FOOD SECURITY
   {
-    key: 'supply-overview',
-    label: 'Supply position',
-    labelAr: 'وضع الإمدادات',
-    path: '/dashboard/supply-overview',
-    icon: 'ShoppingCart',
+    key: 'procurement',
+    label: 'Procurement',
+    labelAr: 'المشتريات',
+    path: '/dashboard/procurement',
+    icon: 'ShoppingBag',
+    availability: 'partial',
+    area: 'food_security',
+  },
+  {
+    key: 'logistics',
+    label: 'Logistics',
+    labelAr: 'الخدمات اللوجستية',
+    path: '/dashboard/logistics',
+    icon: 'Ship',
+    availability: 'partial',
+    area: 'food_security',
+  },
+  {
+    key: 'strategic-reserves',
+    label: 'Strategic reserves',
+    labelAr: 'الاحتياطيات الاستراتيجية',
+    path: '/dashboard/reserves',
+    icon: 'Warehouse',
     availability: 'partial',
     area: 'food_security',
   },
@@ -440,7 +458,7 @@ export const ROLE_NAV_KEYS: Record<PlatformRoleProfile, string[]> = {
   ministry_admin: [
     'watchtower', 'live-map', 'farms-sites', 'harvest', 'monitoring',
     'data-analytics', 'production-harvest', 'weather', 'water-intelligence', 'energy-intelligence', 'cross-analytics',
-    'supply-overview', 'commodities', 'forecast-resilience',
+    'procurement', 'logistics', 'strategic-reserves', 'commodities', 'forecast-resilience',
     'alerts-center', 'investigations', 'inspection-dashboard', 'compliance-inspections', 'corrective-actions',
     'programs-policy', 'inter-agency-collaboration', 'reports-center', 'evidence-attachments',
     'ai-mission-control', 'ai-briefings',
@@ -454,7 +472,7 @@ export const ROLE_NAV_KEYS: Record<PlatformRoleProfile, string[]> = {
     'settings',
   ],
   hassad_supply: [
-    'supply-overview', 'commodities', 'forecast-resilience',
+    'procurement', 'logistics', 'strategic-reserves', 'commodities', 'forecast-resilience',
     'watchtower', 'harvest', 'data-analytics',
     'live-map', 'ai-mission-control',
     'users-roles', 'invitations', 'access-permissions', 'my-profile', 'settings',
@@ -465,7 +483,7 @@ export const ROLE_NAV_KEYS: Record<PlatformRoleProfile, string[]> = {
     'alerts-center', 'users-roles', 'invitations', 'my-profile', 'settings',
   ],
   finance: [
-    'data-analytics', 'cross-analytics', 'supply-overview', 'reports-center', 'settings',
+    'data-analytics', 'cross-analytics', 'procurement', 'logistics', 'strategic-reserves', 'reports-center', 'settings',
   ],
   default: [
     'live-map', 'watchtower', 'harvest', 'weather', 'water-intelligence', 'energy-intelligence',

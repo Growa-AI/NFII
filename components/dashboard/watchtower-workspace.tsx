@@ -8,6 +8,7 @@ import { useI18n } from '@/lib/i18n'
 import { useOrganization } from '@/hooks/use-organization'
 import { WatchtowerFoodCommandCenter } from '@/components/dashboard/watchtower/food-command-center'
 import { WatchtowerScenarioRoom } from '@/components/dashboard/watchtower/scenario-room'
+import { WatchtowerOperationsPulse } from '@/components/dashboard/watchtower/operations-pulse'
 
 /**
  * NFII 2.0 Food Resilience Operating Picture.
@@ -26,13 +27,14 @@ export function WatchtowerWorkspace() {
   const sections = [
     { id: 'watchtower-food', name: tx('Food situation', 'الوضع الغذائي'), icon: Wheat },
     { id: 'watchtower-response', name: tx('Procurement & risk', 'المشتريات والمخاطر'), icon: Network },
+    { id: 'watchtower-operations', name: tx('Supply network', 'شبكة الإمداد'), icon: Network },
     { id: 'watchtower-scenarios', name: tx('Scenario room', 'غرفة السيناريوهات'), icon: FlaskConical },
   ] as const
 
   return (
-    <main className="growa h-full overflow-y-auto bg-background text-content">
+    <main className="growa nfii-command-scope h-full overflow-y-auto bg-background text-content">
       <div className="mx-auto max-w-[1600px] space-y-4 p-4 pb-12 sm:p-6">
-        <header className="relative overflow-hidden rounded-xl border border-[#223951] bg-[#071522] text-[#f0f5fa]">
+        <header className="relative overflow-hidden rounded-md border border-[#22303f] bg-[#040a14] text-[#f0f5fa]">
           <div aria-hidden="true" className="pointer-events-none absolute -right-20 -top-28 h-72 w-96 rounded-full bg-[#274c6d]/20 blur-3xl" />
           <div aria-hidden="true" className="pointer-events-none absolute -bottom-28 left-1/4 h-48 w-80 rounded-full bg-[#70c0a0]/10 blur-3xl" />
 
@@ -94,6 +96,18 @@ export function WatchtowerWorkspace() {
                   </a>
                 )
               })}
+              <Link href="/dashboard/procurement"
+                className="inline-flex items-center gap-1 rounded-sm border border-[#35536c] bg-[#12283b] px-3 py-2 text-[11px] text-[#b0e4d1] hover:border-[#70c0a0]">
+                {tx('Procurement', 'المشتريات')} <ArrowUpRight className="h-3.5 w-3.5" />
+              </Link>
+              <Link href="/dashboard/logistics"
+                className="inline-flex items-center gap-1 rounded-sm border border-[#35536c] bg-[#12283b] px-3 py-2 text-[11px] text-[#b0e4d1] hover:border-[#70c0a0]">
+                {tx('Logistics', 'الخدمات اللوجستية')} <ArrowUpRight className="h-3.5 w-3.5" />
+              </Link>
+              <Link href="/dashboard/reserves"
+                className="inline-flex items-center gap-1 rounded-sm border border-[#35536c] bg-[#12283b] px-3 py-2 text-[11px] text-[#b0e4d1] hover:border-[#70c0a0]">
+                {tx('Reserves', 'الاحتياطيات')} <ArrowUpRight className="h-3.5 w-3.5" />
+              </Link>
               <Link href="/dashboard?module=commodities"
                 className="ms-auto inline-flex items-center gap-1.5 px-2 py-2 text-[11px] font-medium text-[#a5e0c9] hover:underline">
                 {tx('Commodity intelligence', 'تحليل السلع')}
@@ -104,6 +118,8 @@ export function WatchtowerWorkspace() {
         </header>
 
         <WatchtowerFoodCommandCenter />
+
+        <WatchtowerOperationsPulse />
 
         <WatchtowerScenarioRoom />
 
