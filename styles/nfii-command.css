@@ -1,171 +1,178 @@
 /*
- * ICPS-inspired dark operations scope.
- * Deliberately isolated from Growa's agricultural and account-management UI.
- * Reference visual language: graphite/canvas #00050d, panel #040a14,
- * cool borders #22303f, gold #c8a860, blue #78a8f0, mint #70c0a0.
+ * NFII supply-chain layout primitives.
+ * This is NOT a second theme: every color, surface and interaction resolves
+ * through the same Growa tokens used by the rest of the platform.
+ * The global brand tokens are defined in styles/growa/colors.css.
  */
 .nfii-command-scope {
-  --surface-page: #00050d;
-  --surface-card: #040a14;
-  --surface-muted: #0d1524;
-  --surface-accent: #152337;
-  --text-primary: #f0f0f0;
-  --text-secondary: #9aa9bd;
-  --text-accent: #c8a860;
-  --border-subtle: #22303f;
-  --border-default: #36485c;
-  --border-accent: #c8a860;
-  --status-good: #70c0a0;
-  --status-critical: #e5897c;
-  --warning: #d08030;
-  --warning-strong: #f0bd82;
-  --warning-soft: #2d1c0f;
-  --warning-line: #795132;
-  --growa-sage-700: #70c0a0;
-  --background: #00050d;
-  --foreground: #f0f0f0;
-  --card: #040a14;
-  --card-foreground: #f0f0f0;
-  --muted: #0d1524;
-  --muted-foreground: #9aa9bd;
-  --border: #22303f;
-  --input: #36485c;
-  background-color: #00050d;
-  color: #f0f0f0;
-  color-scheme: dark;
+  color: var(--text-primary);
+  background: var(--growa-stone-50);
+  color-scheme: light;
 }
+
 .nfii-command-scope .nfii-panel {
-  border: 1px solid #22303f;
-  background: #040a14;
-  border-radius: 5px;
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-lg);
+  background: var(--surface-card);
 }
+
 .nfii-command-scope .nfii-subpanel {
-  border: 1px solid #233348;
-  background: #09101b;
-  border-radius: 4px;
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-md);
+  background: var(--surface-muted);
 }
+
 .nfii-command-scope .nfii-label {
-  color: #9aa9bd;
-  font-size: 10px;
-  font-weight: 600;
-  letter-spacing: .11em;
+  color: var(--text-secondary);
+  font-size: var(--text-micro);
+  font-weight: var(--fw-demibold);
+  letter-spacing: var(--ls-eyebrow);
   text-transform: uppercase;
 }
+
 .nfii-command-scope .nfii-input {
-  min-height: 38px;
+  min-height: 44px;
   width: 100%;
-  border: 1px solid #344a62;
-  border-radius: 4px;
-  background: #0d1725;
-  color: #e8eff9;
-  padding: 8px 10px;
-  font-size: 12px;
+  border: 1px solid var(--border-default);
+  border-radius: var(--radius-lg);
+  background: var(--surface-card);
+  color: var(--text-primary);
+  padding: 9px 13px;
+  font-size: var(--text-body-sm);
   outline: none;
 }
+
 .nfii-command-scope .nfii-input:focus-visible,
 .nfii-command-scope button:focus-visible,
 .nfii-command-scope a:focus-visible {
-  outline: 2px solid #78a8f0;
+  outline: 2px solid var(--focus-ring);
   outline-offset: 2px;
 }
+
 .nfii-command-scope .nfii-input:disabled,
 .nfii-command-scope button:disabled {
-  opacity: .48;
+  opacity: .5;
   cursor: not-allowed;
 }
+
+/* The Growa brand uses pills for buttons, tags and navigation. */
 .nfii-command-scope .nfii-button {
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  gap: 7px;
-  min-height: 36px;
-  border: 1px solid #315e6b;
-  border-radius: 4px;
-  background: #103233;
-  color: #b7e9d5;
-  padding: 6px 13px;
-  font-size: 12px;
-  font-weight: 600;
+  gap: 8px;
+  min-height: 40px;
+  border: 1px solid var(--growa-ink);
+  border-radius: var(--radius-pill);
+  background: var(--growa-ink);
+  color: var(--growa-white);
+  padding: 8px 16px;
+  font-size: var(--text-body-sm);
+  font-weight: var(--fw-medium);
   cursor: pointer;
+  transition: transform .15s var(--ease-brand), background-color .15s var(--ease-brand);
 }
+
 .nfii-command-scope .nfii-button:hover:not(:disabled) {
-  background: #174341;
-  border-color: #70c0a0;
+  background: var(--growa-ink-800);
 }
+
+.nfii-command-scope .nfii-button:active:not(:disabled) {
+  transform: scale(.985);
+}
+
 .nfii-command-scope .nfii-button-secondary {
-  border-color: #354b62;
-  background: #13253a;
-  color: #cbd8e8;
+  border-color: var(--border-default);
+  background: var(--surface-card);
+  color: var(--text-primary);
 }
+
 .nfii-command-scope .nfii-button-secondary:hover:not(:disabled) {
-  background: #1c3149;
+  background: var(--growa-cream-100);
+  border-color: var(--border-accent);
 }
+
 .nfii-command-scope .nfii-table {
   width: 100%;
   border-collapse: collapse;
-  font-size: 12px;
+  font-size: var(--text-body-sm);
 }
+
 .nfii-command-scope .nfii-table th {
-  padding: 11px 12px;
-  background: #09101b;
-  border-bottom: 1px solid #22303f;
+  padding: 12px 14px;
+  background: var(--surface-muted);
+  border-bottom: 1px solid var(--border-subtle);
   text-align: start;
-  color: #99acc1;
-  font-size: 10px;
-  font-weight: 600;
-  letter-spacing: .06em;
+  color: var(--text-secondary);
+  font-size: var(--text-micro);
+  font-weight: var(--fw-demibold);
+  letter-spacing: var(--ls-eyebrow);
   text-transform: uppercase;
   white-space: nowrap;
 }
+
 .nfii-command-scope .nfii-table td {
-  padding: 11px 12px;
-  border-bottom: 1px solid #1d2b3c;
-  color: #e2ebf5;
+  padding: 13px 14px;
+  border-bottom: 1px solid var(--border-subtle);
+  color: var(--text-primary);
   vertical-align: middle;
 }
+
 .nfii-command-scope .nfii-table tbody tr:hover {
-  background: #0c1c2e;
+  background: var(--growa-cream-50);
 }
+
 .nfii-command-scope .nfii-table tbody tr:last-child td {
   border-bottom: 0;
 }
+
 .nfii-command-scope .nfii-rail-link {
-  border: 1px solid #23384e;
-  border-radius: 3px;
-  color: #b7c8dc;
-  background: #0c1a2b;
-  padding: 9px 11px;
-  font-size: 12px;
-  font-weight: 500;
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-pill);
+  color: var(--text-primary);
+  background: var(--surface-card);
+  padding: 9px 14px;
+  font-size: var(--text-body-sm);
+  font-weight: var(--fw-medium);
   text-decoration: none;
 }
+
 .nfii-command-scope .nfii-rail-link:hover {
-  color: #f0f0f0;
-  border-color: #70c0a0;
+  background: var(--growa-cream-50);
+  border-color: var(--border-accent);
+  color: var(--text-primary);
 }
+
 .nfii-command-scope .nfii-rail-link[data-active='true'] {
-  color: #c0ebd8;
-  border-color: #497b74;
-  background: #173038;
+  color: var(--growa-ink);
+  border-color: var(--growa-sage);
+  background: var(--growa-cream-100);
 }
+
 .nfii-command-scope .nfii-kpi {
-  border: 1px solid #22364d;
-  border-radius: 4px;
-  background: #081525;
-  padding: 13px;
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-lg);
+  background: var(--surface-card);
+  padding: 16px;
 }
+
 .nfii-command-scope .nfii-empty {
-  border: 1px dashed #354b63;
-  border-radius: 4px;
-  padding: 18px;
-  color: #a0afc3;
-  font-size: 12px;
+  border: 1px dashed var(--border-default);
+  border-radius: var(--radius-lg);
+  padding: 20px;
+  color: var(--text-secondary);
+  font-size: var(--text-body-sm);
   line-height: 1.7;
 }
+
 .nfii-command-scope .nfii-focus {
-  color: #c8a860;
+  color: var(--text-accent);
 }
+
 @media (prefers-reduced-motion: reduce) {
-  .nfii-command-scope *, .nfii-command-scope *::before,
-  .nfii-command-scope *::after { transition: none !important; }
+  .nfii-command-scope *,
+  .nfii-command-scope *::before,
+  .nfii-command-scope *::after {
+    transition: none !important;
+  }
 }

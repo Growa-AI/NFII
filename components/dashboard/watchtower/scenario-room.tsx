@@ -270,16 +270,16 @@ export function WatchtowerScenarioRoom() {
                 ))}
               </div>
               {hasShocks && scenario?.status === 'complete' && (
-                <div className="rounded-lg border border-[#29435d] bg-[#0b1b2c] p-3 text-[#e8eff8]">
+                <div className="rounded-lg border border-line bg-muted p-3 text-content">
                   <div className="flex flex-wrap items-center justify-between gap-2">
                     <p className="text-[12px] font-semibold">
                       {tx('Response assessment playbook', 'خطة تقييم الاستجابة')}
                     </p>
-                    <span className="rounded-sm border border-[#65758c] px-2 py-0.5 text-[9px] text-[#b6c9d8]">
+                    <span className="rounded-full border border-line px-2 py-0.5 text-[9px] text-content-soft">
                       {tx('DRAFT · NOT DISPATCHED', 'مسودة · لم تُرسل')}
                     </span>
                   </div>
-                  <p className="mt-1 text-[11px] text-[#a7b9cf]">
+                  <p className="mt-1 text-[11px] text-content-soft">
                     {(scenario.totals.scenarioDeficitTonnes ?? 0) > 0
                       ? tx(
                         'The selected shock creates a simulated deficit. Review the decision sequence before any procurement or reserve-release authorization.',
@@ -309,15 +309,15 @@ export function WatchtowerScenarioRoom() {
                         ar: 'رفع الاستجابة المُراجعة إلى متخذي القرار المخولين',
                       },
                     ].map((task, index) => (
-                      <li key={task.en} className="flex items-start gap-2 rounded-md border border-[#30455c] bg-[#12283c] p-2 text-[11px] text-[#cbd8e8]">
-                        <span className="inline-flex h-5 w-5 shrink-0 items-center justify-center rounded-sm border border-[#4c6884] text-[10px] text-[#80c6aa]">
+                      <li key={task.en} className="flex items-start gap-2 rounded-md border border-line bg-muted p-2 text-[11px] text-content">
+                        <span className="inline-flex h-5 w-5 shrink-0 items-center justify-center rounded-full border border-line text-[10px] text-content-accent">
                           {index + 1}
                         </span>
                         <span>{tx(task.en, task.ar)}</span>
                       </li>
                     ))}
                   </ol>
-                  <p className="mt-2 text-[10px] text-[#9cacc2]">
+                  <p className="mt-2 text-[10px] text-content-soft">
                     {tx(
                       'This checklist is guidance only. No tender, approval case, purchase, reserve movement or dispatch has been created.',
                       'هذه قائمة إرشادية فقط. لم يُنشأ أي عطاء أو طلب موافقة أو شراء أو حركة مخزون أو أمر إرسال.',

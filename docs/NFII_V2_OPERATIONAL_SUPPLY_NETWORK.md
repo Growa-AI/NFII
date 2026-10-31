@@ -16,7 +16,7 @@ The system is **organization-scoped**, not an authorized national federation. Th
 - \`/dashboard/procurement\`: supplier qualification, contracts priced in QAR per metric tonne, purchase orders, approval inbox and audit.
 - \`/dashboard/logistics\`: shipment lifecycle tied to approved purchase orders; transport status recorded by authorized users with an explanatory note.
 - \`/dashboard/reserves\`: approved warehouses, physically received lots linked to delivered shipments, lot expiry and authorized releases. Reserve availability differentiates physical quantity from approved-but-unexecuted reservations.
-- All four pages use **ICPS-inspired visual tokens** (#00050d canvas, #040a14 panels, cool outlines, gold/blue/mint accents), bilingual English/Arabic labels and a persistent cross-module navigation row.
+- All four pages use the **existing Growa design system**, not the ICPS demo's dark palette: warm stone page backgrounds, white cards, Growa ink (#111E13), cream (#EEF4C9), sage (#6C8952), brand pill controls and Growa's shared PageHeader. English/Arabic labels and cross-module navigation remain available.
 
 ## Mandatory deployment steps
 
@@ -97,3 +97,14 @@ Tabs have explicit active states, keyboard-accessible native buttons and deep-li
 (\`#watchtower-food\`, \`#watchtower-operations\`, \`#watchtower-scenarios\`).
 The old \`/dashboard/supply-overview\` route redirects to \`#watchtower-operations\`,
 rather than rendering demo supply figures.
+
+
+## UI correction: Growa brand is the design authority
+
+The ICPS reference remains a **functional** inspiration (linked workflows and crisis response), not a visual theme. The prior navy/blue/gold NFII command styling was removed after reviewing the platform's real Growa tokens.
+
+- \`styles/nfii-command.css\` is only a layout layer and uses \`styles/growa/colors.css\` variables, never overriding the platform colors or defining a competing theme.
+- Watchtower and Operations use \`PageHeader\` from \`components/brand/layout.tsx\`.
+- Three Watchtower sections, Procurement/Logistics/Reserves cross-links, source notices, operational forms, approvals and audit remain functional.
+- Risk/error/success states reuse Growa's existing semantic tokens, rather than new blue alerts or off-brand custom colors.
+- No database or permission changes in this visual correction.

@@ -11,6 +11,7 @@ import { useOrganization } from '@/hooks/use-organization'
 import { useActiveOrganizationOptional } from '@/contexts/active-organization-context'
 import { useI18n } from '@/lib/i18n'
 import { COMMODITY_CATALOG } from '@/lib/platform/commodity-catalog'
+import { PageHeader } from '@/components/brand/layout'
 import {
   OPERATION_FIELDS, type NfiiOperationKind, type OperationField,
 } from '@/lib/nfii/operations-validation'
@@ -94,18 +95,18 @@ function date(value:unknown):string {
 }
 function statusClass(status:string):string {
   if(status==='approved'||status==='delivered'||status==='executed'){
-    return 'border-[#34665c] bg-[#10332e] text-[#94d8bd]'
+    return 'border-line-accent bg-cream-100 text-sage-700'
   }
   if(status==='rejected'||status==='cancelled'){
-    return 'border-[#8b4b4a] bg-[#371b24] text-[#efaba5]'
+    return 'border-warning-line bg-warning-soft text-critical'
   }
   if(status==='delayed'){
-    return 'border-[#ad6537] bg-[#352415] text-[#e8be90]'
+    return 'border-warning-line bg-warning-soft text-warning-strong'
   }
-  return 'border-[#3c5878] bg-[#15263c] text-[#c0d1e5]'
+  return 'border-line bg-muted text-content-soft'
 }
 function Status({status}:{status:string|undefined}){
-  return <span className={'inline-flex rounded-sm border px-2 py-0.5 text-[10px] font-medium uppercase tracking-wide '+
+  return <span className={'inline-flex rounded-full border px-2 py-0.5 text-[10px] font-medium uppercase tracking-wide '+
     statusClass(status??'unknown')}>{String(status??'—').replaceAll('_',' ')}</span>
 }
 
@@ -135,7 +136,7 @@ function RecordDetails({row,view,snapshot,ar}:{
 }){
   const pair=(key:string,val:unknown)=> (
     <span className="whitespace-nowrap" key={key}>
-      <span className="text-[#7e93aa]">{key}: </span>{String(val??'—')}
+      <span className="text-content-soft">{key}: </span>{String(val??'—')}
     </span>
   )
   let detail:ReturnType<typeof pair>[]=[]
@@ -196,7 +197,7 @@ function RecordDetails({row,view,snapshot,ar}:{
         pair(ar?'الحدث':'Event',row.action),
         pair(ar?'التاريخ':'Time',row.created_at?.slice(0,19).replace('T',' '))];break
   }
-  return <div className="mt-1 flex flex-wrap gap-x-3 gap-y-1 text-[10px] text-[#a4b4c8]">{detail}</div>
+  return <div className="mt-1 flex flex-wrap gap-x-3 gap-y-1 text-[10px] text-content-soft">{detail}</div>
 }
 
 function OperationsHeader({focus,organizationName}:{
@@ -212,36 +213,29 @@ function OperationsHeader({focus,organizationName}:{
     {href:'/dashboard/reserves',en:'Strategic reserves',ar:'الاحتياطيات',icon:Warehouse,active:focus==='reserves'},
   ]
   const config=AREA[focus]
-  return <header className="nfii-panel overflow-hidden">
-    <div className="border-b border-[#22303f] bg-[#071421] p-5 md:p-6">
-      <div className="flex flex-wrap items-center justify-between gap-2">
-        <p className="nfii-label !text-[#c8a860]">NFII 2.0 / {tx('SUPPLY OPERATIONS','عمليات الإمداد')}</p>
-        <span className="rounded border border-[#39556a] bg-[#0c2532] px-2.5 py-1 text-[10px] text-[#98d4c3]">
-          {tx('REAL DATABASE · ORGANIZATION SCOPED','قاعدة بيانات فعلية · نطاق المؤسسة')}
-        </span>
-      </div>
-      <h1 className="mt-3 text-[26px] font-light tracking-tight md:text-[31px]">
-        {tx(config.en,config.ar)}
-      </h1>
-      <p className="mt-1 max-w-[85ch] text-[12px] text-[#9aabc1]">
-        {tx(config.subtitleEn,config.subtitleAr)}
-      </p>
-      <div className="mt-3 inline-flex items-center gap-2 text-[11px] text-[#b5c7d9]">
-        <span className="h-1.5 w-1.5 rounded-full bg-[#70c0a0]"/>
-        {organizationName??tx('Choose an authorized organization','اختر مؤسسة مخولة')}
-      </div>
-    </div>
+  return <header className="space-y-3">
+    <PageHeader
+      eyebrow={tx('Food security / Supply operations', 'الأمن الغذائي / عمليات الإمداد')}
+      title={tx(config.en,config.ar)}
+      subtitle={tx(config.subtitleEn,config.subtitleAr)}
+      actions={
+        <div className="text-[12px] text-content-soft">
+          <span className="font-medium text-content">{organizationName??tx('Select organization','اختر المؤسسة')}</span>
+          <p className="mt-1">{tx('Organization records · Independent review', 'سجلات المؤسسة · مراجعة مستقلة')}</p>
+        </div>
+      }
+      className="!mb-1"
+    />
     <nav aria-label={tx('Supply operations navigation','التنقل في عمليات الإمداد')}
-      className="flex flex-wrap gap-2 p-3">
+      className="nfii-panel flex flex-wrap items-center gap-2 px-3 py-3">
       {links.map(link=>{
         const Icon=link.icon
         return <Link key={link.href} href={link.href}
           data-active={link.active}
           aria-current={link.active?'page':undefined}
           className="nfii-rail-link inline-flex items-center gap-2">
-          <Icon className="h-3.5 w-3.5" aria-hidden="true"/>
+          <Icon className="h-4 w-4" aria-hidden="true"/>
           {tx(link.en,link.ar)}
-          {link.active&&<span className="h-1.5 w-1.5 rounded-full bg-[#70c0a0]" />}
         </Link>
       })}
     </nav>
@@ -432,7 +426,7 @@ export function NfiiOperationsWorkspace({focus}:{focus:OperationsArea}){
     const kind=view==='approvals'?'approval':view==='shipments'?'shipment':'release'
     return choices.map(choice=><button key={choice.action} type="button"
       onClick={()=>openAction(kind,row,choice.action)}
-      className="rounded-sm border border-[#3e576c] px-2.5 py-1 text-[10px] font-medium text-[#a4d7c8] hover:border-[#70c0a0]">
+      className="rounded-full border border-line px-2.5 py-1 text-[10px] font-medium text-content-accent hover:border-line-accent">
       {choice.label}
     </button>)
   }
@@ -479,29 +473,29 @@ export function NfiiOperationsWorkspace({focus}:{focus:OperationsArea}){
     <div className="mx-auto max-w-[1500px] space-y-4 pb-12">
       <OperationsHeader focus={focus} organizationName={organization?.name??null}/>
 
-      {error&&<div role="alert" className="rounded border border-[#9a5048] bg-[#361b21] p-3 text-[12px] text-[#f3aaa0]">
+      {error&&<div role="alert" className="rounded-lg border border-warning-line bg-warning-soft p-3 text-[12px] text-critical">
         {error}
       </div>}
-      {notice&&<div role="status" className="rounded border border-[#366e5b] bg-[#12352d] p-3 text-[12px] text-[#a4e1c8]">
+      {notice&&<div role="status" className="rounded-lg border border-line-accent bg-cream-100 p-3 text-[12px] text-content-accent">
         {notice}
       </div>}
-      {truncated.length>0&&<div role="status" className="rounded border border-[#967149] bg-[#302313] p-3 text-[12px] text-[#e6c59c]">
+      {truncated.length>0&&<div role="status" className="rounded-lg border border-warning-line bg-warning-soft p-3 text-[12px] text-warning-strong">
         {tx('Some lists are limited to 150 records. This is not a complete total:',
           'بعض القوائم محدودة بـ 150 سجلاً. هذه ليست الإجماليات الكاملة:')} {' '}
         {truncated.join(', ')}
       </div>}
 
       {orgLoading||loading?(
-        <div className="nfii-panel p-10 text-[13px] text-[#b2c5d9]" role="status">
+        <div className="nfii-panel p-10 text-[13px] text-content-soft" role="status">
           {tx('Loading organization operations…','جارٍ تحميل عمليات المؤسسة…')}
         </div>
       ):!orgId?(
-        <div className="nfii-panel p-8 text-[13px] text-[#b4c4d8]">
+        <div className="nfii-panel p-8 text-[13px] text-content-soft">
           {tx('Select an authorized organization first.',
             'اختر مؤسسة مخولة أولاً.')}
         </div>
       ):!snapshot?(
-        <div className="nfii-panel p-8 text-[12px] text-[#b5c6d6]">
+        <div className="nfii-panel p-8 text-[12px] text-content-soft">
           {tx(
             'Operational ledger not available. Apply migration 00041 after a database backup, then refresh this page. No demonstration rows are shown.',
             'سجل العمليات غير متاح. طبّق الترحيل 00041 بعد أخذ نسخة احتياطية، ثم حدّث الصفحة. لا تُعرض بيانات تجريبية.'
@@ -516,20 +510,20 @@ export function NfiiOperationsWorkspace({focus}:{focus:OperationsArea}){
           <div className="grid grid-cols-2 gap-2 lg:grid-cols-4">
             {kpis.map(card=><div className="nfii-kpi" key={card.title}>
               <p className="nfii-label">{card.title}</p>
-              <p className="mt-2 text-[24px] font-medium tabular-nums text-[#f1f5fa]">
-                {card.value} {card.unit&&<span className="text-[11px] font-normal text-[#9aabc1]">{card.unit}</span>}
+              <p className="mt-2 text-[24px] font-medium tabular-nums text-content">
+                {card.value} {card.unit&&<span className="text-[11px] font-normal text-content-soft">{card.unit}</span>}
               </p>
             </div>)}
           </div>
 
           <div className="grid gap-4 xl:grid-cols-[minmax(0,1.6fr)_minmax(320px,0.8fr)]">
             <section className="nfii-panel min-w-0 overflow-hidden">
-              <div className="flex flex-wrap items-center justify-between gap-2 border-b border-[#22303f] px-4 py-3">
+              <div className="flex flex-wrap items-center justify-between gap-2 border-b border-line px-4 py-3">
                 <div>
-                  <h2 className="text-[14px] font-semibold text-[#f0f0f0]">
+                  <h2 className="text-[14px] font-semibold text-content">
                     {tx('Operational register','السجل التشغيلي')}
                   </h2>
-                  <p className="mt-1 text-[11px] text-[#9aabc1]">
+                  <p className="mt-1 text-[11px] text-content-soft">
                     {tx('Tenant-specific records and their actual review states.',
                       'سجلات المؤسسة وحالات مراجعتها الفعلية.')}
                   </p>
@@ -540,17 +534,17 @@ export function NfiiOperationsWorkspace({focus}:{focus:OperationsArea}){
                 </button>
               </div>
 
-              <div className="flex flex-wrap gap-1.5 border-b border-[#22303f] p-3">
+              <div className="flex flex-wrap gap-1.5 border-b border-line p-3">
                 {conf.collections.map(key=>(
                   <button key={key} type="button"
                     onClick={()=>setActiveView(key)}
                     aria-pressed={activeView===key}
-                    className={'rounded-sm border px-3 py-2 text-[11px] '+
+                    className={'rounded-full border px-3 py-2 text-[11px] '+
                       (activeView===key
-                        ?'border-[#70c0a0] bg-[#173839] text-[#bde8d7]'
-                        :'border-[#2b4057] bg-[#0b1b2d] text-[#b1c3d8] hover:border-[#78a8f0]')}>
+                        ?'border-line-accent bg-muted text-content-accent'
+                        :'border-line bg-muted text-content-soft hover:border-line-accent')}>
                     {tx(...COLLECTION_LABEL[key])}
-                    <span className="ms-2 font-mono text-[10px] text-[#8498ab]">
+                    <span className="ms-2 font-mono text-[10px] text-content-soft">
                       {s[key].length}
                     </span>
                   </button>
@@ -577,14 +571,14 @@ export function NfiiOperationsWorkspace({focus}:{focus:OperationsArea}){
                         <tr key={row.id}>
                           <td>
                             <div className="flex items-center gap-2">
-                              <strong className="font-medium text-[#f0f0f0]">{getLabel(row)}</strong>
-                              {activeView==='events'&&<span className="text-[10px] text-[#7ca9d3]">
+                              <strong className="font-medium text-content">{getLabel(row)}</strong>
+                              {activeView==='events'&&<span className="text-[10px] text-content-accent">
                                 {row.action}
                               </span>}
                             </div>
                             <RecordDetails row={row} snapshot={s} view={activeView} ar={ar}/>
                             {activeView==='approvals'&&row.submitted_by===user?.id&&
-                              <span className="mt-1 text-[10px] text-[#9aabc1]">
+                              <span className="mt-1 text-[10px] text-content-soft">
                                 {tx('Submitted by you · independent review required',
                                   'مُرسل بواسطتك · مراجعة مستقلة مطلوبة')}
                               </span>}
@@ -593,7 +587,7 @@ export function NfiiOperationsWorkspace({focus}:{focus:OperationsArea}){
                           <td>
                             <div className="flex max-w-[175px] flex-wrap gap-1.5">
                               {actionsFor(activeView,row)}
-                              {activeView==='events'&&<span className="text-[10px] text-[#9aabc1]">
+                              {activeView==='events'&&<span className="text-[10px] text-content-soft">
                                 {date(row.created_at)}
                               </span>}
                             </div>
@@ -608,9 +602,9 @@ export function NfiiOperationsWorkspace({focus}:{focus:OperationsArea}){
 
             <aside className="min-w-0 space-y-4">
               <section className="nfii-panel overflow-hidden">
-                <div className="flex items-center justify-between border-b border-[#22303f] px-4 py-3">
+                <div className="flex items-center justify-between border-b border-line px-4 py-3">
                   <h2 className="flex items-center gap-2 text-[13px] font-semibold">
-                    <Plus className="h-3.5 w-3.5 text-[#70c0a0]"/>
+                    <Plus className="h-3.5 w-3.5 text-content-accent"/>
                     {tx('New operational record','سجل تشغيلي جديد')}
                   </h2>
                   <button type="button" className="nfii-button nfii-button-secondary"
@@ -620,7 +614,7 @@ export function NfiiOperationsWorkspace({focus}:{focus:OperationsArea}){
                   </button>
                 </div>
                 <div className="p-4">
-                  <p className="mb-3 text-[11px] leading-relaxed text-[#9aabc1]">
+                  <p className="mb-3 text-[11px] leading-relaxed text-content-soft">
                     {focus==='procurement'
                       ?tx('Create suppliers first, then contracts, then purchase orders. Each step requires approval.',
                         'أنشئ الموردين أولاً ثم العقود وأوامر الشراء؛ كل خطوة تتطلب الموافقة.')
@@ -650,7 +644,7 @@ export function NfiiOperationsWorkspace({focus}:{focus:OperationsArea}){
                           {fieldInput(field)}
                         </label>
                       ))}
-                      {!canCreate&&<p className="text-[11px] text-[#e6b78a]">
+                      {!canCreate&&<p className="text-[11px] text-warning-strong">
                         {tx('Your account cannot submit this record type.',
                           'حسابك لا يملك صلاحية إرسال هذا النوع من السجلات.')}
                       </p>}
@@ -665,10 +659,10 @@ export function NfiiOperationsWorkspace({focus}:{focus:OperationsArea}){
 
               <section className="nfii-panel p-4">
                 <h3 className="flex items-center gap-2 text-[12px] font-semibold">
-                  <ClipboardCheck className="h-4 w-4 text-[#c8a860]"/>
+                  <ClipboardCheck className="h-4 w-4 text-content-accent"/>
                   {tx('Approval inbox','صندوق الموافقات')}
                 </h3>
-                <p className="mt-1 text-[11px] text-[#9aabc1]">
+                <p className="mt-1 text-[11px] text-content-soft">
                   {tx('Proposals are inactive until independently approved.',
                     'لا تصبح الطلبات فعالة حتى تتم الموافقة عليها بشكل مستقل.')}
                 </p>
@@ -677,8 +671,8 @@ export function NfiiOperationsWorkspace({focus}:{focus:OperationsArea}){
                     <div className="nfii-subpanel flex flex-wrap items-center justify-between gap-2 p-2.5"
                       key={row.id}>
                       <div className="min-w-0">
-                        <p className="text-[11px] text-[#dce6f2]">{row.target_type?.replaceAll('_',' ')}</p>
-                        <p className="text-[10px] text-[#8ea3b7]">{row.id.slice(0,8)}</p>
+                        <p className="text-[11px] text-content">{row.target_type?.replaceAll('_',' ')}</p>
+                        <p className="text-[10px] text-content-soft">{row.id.slice(0,8)}</p>
                       </div>
                       {canApprove&&row.submitted_by!==user?.id
                         ?<button type="button" className="nfii-button nfii-button-secondary"
@@ -688,7 +682,7 @@ export function NfiiOperationsWorkspace({focus}:{focus:OperationsArea}){
                           }}>
                           {tx('Review','مراجعة')} <ArrowUpRight className="h-3.5 w-3.5"/>
                         </button>
-                        :<span className="text-[10px] text-[#9aabc1]">
+                        :<span className="text-[10px] text-content-soft">
                           {tx('Independent review','مراجعة مستقلة')}
                         </span>}
                     </div>
@@ -701,7 +695,7 @@ export function NfiiOperationsWorkspace({focus}:{focus:OperationsArea}){
 
               <section className="nfii-panel p-4">
                 <h3 className="text-[12px] font-semibold">{tx('Data integrity','سلامة البيانات')}</h3>
-                <p className="mt-2 text-[11px] leading-relaxed text-[#9aabc1]">
+                <p className="mt-2 text-[11px] leading-relaxed text-content-soft">
                   {tx(
                     'Operational inventory is tracked separately from the independently reviewed Food Balance. No real purchase, bank payment, carrier instruction or warehouse actuator is executed by this software.',
                     'يُتتبع المخزون التشغيلي بمعزل عن ميزان الغذاء المُراجع. لا ينفذ هذا البرنامج شراءً أو دفعاً مصرفياً أو أمراً لشركة شحن أو معدات مستودع.'
@@ -712,19 +706,19 @@ export function NfiiOperationsWorkspace({focus}:{focus:OperationsArea}){
           </div>
 
           <section className="nfii-panel overflow-hidden">
-            <div className="flex flex-wrap items-center justify-between gap-2 border-b border-[#22303f] px-4 py-3">
+            <div className="flex flex-wrap items-center justify-between gap-2 border-b border-line px-4 py-3">
               <h2 className="flex items-center gap-2 text-[12px] font-semibold">
-                <FileCheck2 className="h-4 w-4 text-[#c8a860]"/>
+                <FileCheck2 className="h-4 w-4 text-content-accent"/>
                 {tx('Immutable operation events','سجل الأحداث غير القابل للتعديل')}
               </h2>
               <span className="nfii-label">{tx('Database audit','تدقيق قاعدة البيانات')}</span>
             </div>
             <div className="grid gap-1.5 p-3 sm:grid-cols-2 xl:grid-cols-4">
               {s.events.slice(0,8).map(row=><div key={row.id}
-                className="nfii-subpanel p-2.5 text-[11px] text-[#b8c8da]">
-                <span className="font-medium text-[#c8a860]">{row.action}</span>
+                className="nfii-subpanel p-2.5 text-[11px] text-content-soft">
+                <span className="font-medium text-content-accent">{row.action}</span>
                 <span className="mx-2">·</span>{row.entity_type}
-                <p className="mt-1 text-[10px] text-[#7c91a9]">{date(row.created_at)}</p>
+                <p className="mt-1 text-[10px] text-content-soft">{date(row.created_at)}</p>
               </div>)}
               {s.events.length===0&&<p className="nfii-empty sm:col-span-2 xl:col-span-4">
                 {tx('No operational events recorded yet.','لم تُسجل أحداث تشغيلية بعد.')}
@@ -734,27 +728,27 @@ export function NfiiOperationsWorkspace({focus}:{focus:OperationsArea}){
         </>
       )}
 
-      {pendingAction&&<div className="fixed inset-0 z-[90] flex items-center justify-center bg-[#00050d]/85 p-4"
+      {pendingAction&&<div className="fixed inset-0 z-[90] flex items-center justify-center bg-ink/65 p-4"
         role="presentation">
         <div role="dialog" aria-modal="true"
           aria-label={tx('Confirm a documented state change','تأكيد تغيير موثق في الحالة')}
-          className="w-full max-w-lg rounded-md border border-[#375269] bg-[#081525] p-5 shadow-2xl">
+          className="w-full max-w-lg rounded-md border border-line bg-card p-5 shadow-2xl">
           <div className="flex items-center justify-between gap-3">
-            <h2 className="text-[17px] font-semibold text-[#f0f0f0]">
+            <h2 className="text-[17px] font-semibold text-content">
               {tx('Confirm workflow decision','تأكيد قرار سير العمل')}
             </h2>
             <button type="button" onClick={()=>setPendingAction(null)}
               aria-label={tx('Close','إغلاق')}
-              className="rounded border border-[#385068] p-1.5 text-[#c6d6e6]">
+              className="rounded border border-line p-1.5 text-content">
               <X className="h-4 w-4"/>
             </button>
           </div>
-          <p className="mt-3 text-[12px] text-[#b9c8da]">
-            <strong className="text-[#e7eef8]">{pendingAction.title}</strong>
-            <span className="mx-2 text-[#71859c]">/</span>
+          <p className="mt-3 text-[12px] text-content-soft">
+            <strong className="text-content">{pendingAction.title}</strong>
+            <span className="mx-2 text-content-soft">/</span>
             <Status status={pendingAction.action}/>
           </p>
-          <p className="mt-2 text-[11px] text-[#9aacc0]">
+          <p className="mt-2 text-[11px] text-content-soft">
             {tx('This action changes a real database record and creates an immutable event. An independent approval is mandatory where required.',
               'يغير هذا الإجراء سجلاً فعلياً ويضيف حدث تدقيق غير قابل للتعديل، مع اشتراط الموافقة المستقلة عند اللزوم.')}
           </p>
@@ -766,7 +760,7 @@ export function NfiiOperationsWorkspace({focus}:{focus:OperationsArea}){
               placeholder={tx('Source document, quantity verification or reason…',
                 'مستند المصدر أو التحقق من الكمية أو السبب…')}/>
           </label>
-          {error&&<p role="alert" className="mt-3 text-[11px] text-[#f3aaa0]">{error}</p>}
+          {error&&<p role="alert" className="mt-3 text-[11px] text-critical">{error}</p>}
           <div className="mt-4 flex justify-end gap-2">
             <button type="button" className="nfii-button nfii-button-secondary"
               onClick={()=>setPendingAction(null)}>{tx('Cancel','إلغاء')}</button>

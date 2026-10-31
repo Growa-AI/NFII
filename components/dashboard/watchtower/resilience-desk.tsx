@@ -17,10 +17,10 @@ import {
 } from '@/lib/watchtower/resilience-queue'
 
 const PRIORITY_STYLES: Record<ResilienceActionPriority, string> = {
-  P0: 'border-[#dc625f]/50 bg-[#dc625f]/10 text-[#ffb0a7]',
-  P1: 'border-[#d08030]/50 bg-[#d08030]/10 text-[#e8b77e]',
-  P2: 'border-[#78a8f0]/45 bg-[#78a8f0]/10 text-[#b5d0fa]',
-  EVIDENCE: 'border-[#61738d] bg-[#233145] text-[#bdcadb]',
+  P0: 'border-warning-line bg-warning-soft text-critical',
+  P1: 'border-warning-line bg-warning-soft text-warning-strong',
+  P2: 'border-line-accent bg-cream-100 text-sage-700',
+  EVIDENCE: 'border-line bg-muted text-content-soft',
 }
 
 function commodityHref(id: string, organizationId: string): string {
@@ -84,54 +84,54 @@ export function WatchtowerResilienceDesk({ posture }: { posture: FoodPosture }) 
 
   return (
     <section id="watchtower-response" aria-label={tx('Resilience decision desk', 'مكتب قرارات المرونة')}
-      className="rounded-xl border border-[#22303f] bg-[#040a14] px-4 py-4 text-[#e8eff9] md:px-5 md:py-5">
-      <div className="flex flex-wrap items-start justify-between gap-3 border-b border-[#22364d] pb-4">
+      className="rounded-xl border border-line bg-card px-4 py-4 text-content md:px-5 md:py-5">
+      <div className="flex flex-wrap items-start justify-between gap-3 border-b border-line pb-4">
         <div>
-          <p className="text-[10px] font-semibold uppercase tracking-[0.18em] text-[#70c0a0]">
-            {tx('ICPS-inspired · Supply chain intelligence', 'مستوحى من ICPS · معلومات سلسلة الإمداد')}
+          <p className="text-[10px] font-semibold uppercase tracking-[0.18em] text-content-accent">
+            {tx('Food security · Supply chain intelligence', 'الأمن الغذائي · معلومات سلسلة الإمداد')}
           </p>
           <h3 className="mt-1 text-[17px] font-semibold tracking-tight">
             {tx('Resilience & procurement decision desk', 'مكتب قرارات المرونة والمشتريات')}
           </h3>
-          <p className="mt-1 max-w-[90ch] text-[11px] text-[#9cacc2]">
+          <p className="mt-1 max-w-[90ch] text-[11px] text-content-soft">
             {tx(
               'Evidence-based procurement investigations, reserve readiness and supply-network connectivity. Recommendations require human validation and authorization.',
               'تقييم المشتريات والاستعداد للمخزون والربط بشبكة الإمداد بناءً على الأدلة، مع اشتراط المراجعة والاعتماد البشري.',
             )}
           </p>
         </div>
-        <span className="rounded-sm border border-[#365574] bg-[#12273e] px-2 py-1 text-[10px] font-medium tracking-wide text-[#b4d0e6]">
+        <span className="rounded-full border border-line bg-muted px-2 py-1 text-[10px] font-medium tracking-wide text-content">
           {tx('DECISION SUPPORT · NO AUTO-PURCHASE', 'دعم القرار · دون شراء تلقائي')}
         </span>
       </div>
 
       <div className="grid grid-cols-2 gap-2 py-4 md:grid-cols-4">
         {[
-          { name: tx('P0 · Verified gaps', 'P0 · عجز مُراجع'), value: queue.summary.p0, color: 'text-[#f19b8b]' },
-          { name: tx('P1 · Short coverage', 'P1 · تغطية منخفضة'), value: queue.summary.p1, color: 'text-[#e8b77e]' },
-          { name: tx('P2 · Buffer review', 'P2 · مراجعة المخزون'), value: queue.summary.p2, color: 'text-[#b5d0fa]' },
-          { name: tx('Evidence required', 'أدلة مطلوبة'), value: queue.summary.evidence, color: 'text-[#e4eaf3]' },
+          { name: tx('P0 · Verified gaps', 'P0 · عجز مُراجع'), value: queue.summary.p0, color: 'text-critical' },
+          { name: tx('P1 · Short coverage', 'P1 · تغطية منخفضة'), value: queue.summary.p1, color: 'text-warning-strong' },
+          { name: tx('P2 · Buffer review', 'P2 · مراجعة المخزون'), value: queue.summary.p2, color: 'text-content-accent' },
+          { name: tx('Evidence required', 'أدلة مطلوبة'), value: queue.summary.evidence, color: 'text-content' },
         ].map(item => (
-          <div key={item.name} className="rounded-md border border-[#253b54] bg-[#101f34] p-3">
-            <p className="text-[10px] text-[#9cacc2]">{item.name}</p>
+          <div key={item.name} className="rounded-md border border-line bg-muted p-3">
+            <p className="text-[10px] text-content-soft">{item.name}</p>
             <p className={'mt-1 text-[26px] font-medium tabular-nums ' + item.color}>{item.value}</p>
           </div>
         ))}
       </div>
 
       <div className="grid gap-3 xl:grid-cols-[minmax(0,1.3fr)_minmax(310px,1fr)]">
-        <div className="min-w-0 rounded-lg border border-[#253b54] bg-[#0c1a2b]">
-          <div className="flex items-center justify-between gap-2 border-b border-[#253b54] px-3 py-3">
+        <div className="min-w-0 rounded-lg border border-line bg-muted">
+          <div className="flex items-center justify-between gap-2 border-b border-line px-3 py-3">
             <h4 className="flex items-center gap-2 text-[12px] font-semibold">
-              <ShieldAlert className="h-4 w-4 text-[#d9a45a]" />
+              <ShieldAlert className="h-4 w-4 text-warning-strong" />
               {tx('Decision review queue', 'قائمة مراجعة القرارات')}
             </h4>
-            <span className="text-[10px] text-[#9cacc2]">
+            <span className="text-[10px] text-content-soft">
               {queue.procurementReview.length} {tx('supply signals', 'إشارات إمداد')}
             </span>
           </div>
           {queue.procurementReview.length === 0 ? (
-            <p className="px-4 py-5 text-[12px] leading-relaxed text-[#a7b7cb]">
+            <p className="px-4 py-5 text-[12px] leading-relaxed text-content-soft">
               {queue.summary.assessed === 0
                 ? tx(
                   'No sufficiently reviewed balances. Supply risks cannot yet be classified. Review the evidence queue instead.',
@@ -143,7 +143,7 @@ export function WatchtowerResilienceDesk({ posture }: { posture: FoodPosture }) 
                 )}
             </p>
           ) : (
-            <ol className="divide-y divide-[#22364d]">
+            <ol className="divide-y divide-line">
               {queue.procurementReview.map(action => {
                 const copy = actionText(action, ar)
                 return (
@@ -151,20 +151,20 @@ export function WatchtowerResilienceDesk({ posture }: { posture: FoodPosture }) 
                     <div className="flex flex-wrap items-start justify-between gap-2">
                       <div className="min-w-0">
                         <div className="flex flex-wrap items-center gap-2">
-                          <span className={'rounded-sm border px-1.5 py-0.5 text-[10px] font-bold ' + PRIORITY_STYLES[action.priority]}>
+                          <span className={'rounded-full border px-1.5 py-0.5 text-[10px] font-bold ' + PRIORITY_STYLES[action.priority]}>
                             {action.priority}
                           </span>
-                          <strong className="text-[12px] text-[#f1f5fa]">{copy.name}</strong>
+                          <strong className="text-[12px] text-content">{copy.name}</strong>
                         </div>
-                        <p className="mt-1 text-[11px] text-[#a9b8ca]">{copy.detail}</p>
-                        <p className="mt-1 text-[11px] text-[#92a7be]">{copy.recommendation}</p>
+                        <p className="mt-1 text-[11px] text-content-soft">{copy.detail}</p>
+                        <p className="mt-1 text-[11px] text-content-soft">{copy.recommendation}</p>
                       </div>
                       <Link href={commodityHref(action.commodityId, posture.organizationId)}
-                        className="inline-flex items-center gap-1 text-[11px] font-medium text-[#85c9b1] hover:underline">
+                        className="inline-flex items-center gap-1 text-[11px] font-medium text-content-accent hover:underline">
                         {tx('Investigate', 'تحليل')} <ArrowUpRight className="h-3.5 w-3.5" />
                       </Link>
                     </div>
-                    <div className="mt-2 flex flex-wrap gap-x-4 gap-y-1 text-[10px] text-[#b2c0d0]">
+                    <div className="mt-2 flex flex-wrap gap-x-4 gap-y-1 text-[10px] text-content-soft">
                       {action.gapTonnes !== null && action.gapTonnes > 0 && (
                         <span>{tx('Projected gap', 'الفجوة المتوقعة')}: {formatTonnes(action.gapTonnes)} t</span>
                       )}
@@ -180,18 +180,18 @@ export function WatchtowerResilienceDesk({ posture }: { posture: FoodPosture }) 
           )}
         </div>
 
-        <div className="min-w-0 rounded-lg border border-[#253b54] bg-[#0c1a2b]">
-          <div className="flex items-center justify-between border-b border-[#253b54] px-3 py-3">
+        <div className="min-w-0 rounded-lg border border-line bg-muted">
+          <div className="flex items-center justify-between border-b border-line px-3 py-3">
             <h4 className="flex items-center gap-2 text-[12px] font-semibold">
-              <DatabaseZap className="h-4 w-4 text-[#78a8f0]" />
+              <DatabaseZap className="h-4 w-4 text-content-accent" />
               {tx('Evidence & review backlog', 'الأدلة والسجلات قيد المراجعة')}
             </h4>
-            <span className="rounded-sm bg-[#25354c] px-1.5 py-0.5 text-[10px] text-[#c5d0e2]">
+            <span className="rounded-full bg-muted px-1.5 py-0.5 text-[10px] text-content">
               {queue.summary.evidence} {tx('not assessed', 'غير مُقيّمة')}
             </span>
           </div>
           <div className="p-3">
-            <p className="text-[11px] text-[#a7b7cb]">
+            <p className="text-[11px] text-content-soft">
               {tx('Insufficient documentation is a separate risk of uncertainty, not proof of a shortage.',
                 'نقص التوثيق هو حالة عدم يقين مستقلة، وليس دليلاً على وجود عجز.')}
             </p>
@@ -200,28 +200,28 @@ export function WatchtowerResilienceDesk({ posture }: { posture: FoodPosture }) 
                 const copy = actionText(action, ar)
                 return (
                   <Link key={action.commodityId} href={commodityHref(action.commodityId, posture.organizationId)}
-                    className="flex items-center justify-between gap-2 rounded-md border border-[#263b54] bg-[#132439] px-2.5 py-2 text-[11px] text-[#d7e2f0] hover:border-[#78a8f0]/50">
+                    className="flex items-center justify-between gap-2 rounded-md border border-line bg-muted px-2.5 py-2 text-[11px] text-content hover:border-line-accent">
                     <span className="min-w-0 truncate">{copy.name}</span>
-                    <ArrowUpRight className="h-3.5 w-3.5 shrink-0 text-[#78a8f0]" />
+                    <ArrowUpRight className="h-3.5 w-3.5 shrink-0 text-content-accent" />
                   </Link>
                 )
               })}
               {queue.evidenceReview.length > 6 && (
-                <p className="text-[10px] text-[#9cacc2]">
+                <p className="text-[10px] text-content-soft">
                   +{queue.evidenceReview.length - 6} {tx('additional commodities', 'سلع إضافية')}
                 </p>
               )}
               {queue.evidenceReview.length === 0 && (
-                <p className="text-[11px] text-[#a7b7cb]">
+                <p className="text-[11px] text-content-soft">
                   {tx('No commodity evidence gaps in the selected horizon.',
                     'لا توجد فجوات أدلة للسلع في الفترة المحددة.')}
                 </p>
               )}
             </div>
-            <p className="mt-3 border-t border-[#22364d] pt-3 text-[11px] text-[#a7b7cb]">
-              <ClipboardCheck className="me-1.5 inline h-3.5 w-3.5 text-[#70c0a0]" />
+            <p className="mt-3 border-t border-line pt-3 text-[11px] text-content-soft">
+              <ClipboardCheck className="me-1.5 inline h-3.5 w-3.5 text-content-accent" />
               {tx('Records waiting for an independent reviewer', 'سجلات تنتظر مراجعة مستقلة')}: {' '}
-              <strong className="tabular-nums text-[#f1f5fa]">
+              <strong className="tabular-nums text-content">
                 {posture.pendingReviewCount === null ? '—' : posture.pendingReviewCount}
               </strong>
             </p>
@@ -229,13 +229,13 @@ export function WatchtowerResilienceDesk({ posture }: { posture: FoodPosture }) 
         </div>
       </div>
 
-      <div className="mt-3 flex flex-wrap items-center justify-between gap-2 border-t border-[#22364d] pt-3 text-[10px] text-[#9cacc2]">
+      <div className="mt-3 flex flex-wrap items-center justify-between gap-2 border-t border-line pt-3 text-[10px] text-content-soft">
         <span>
-          <AlertTriangle className="me-1 inline h-3.5 w-3.5 text-[#d08030]" />
+          <AlertTriangle className="me-1 inline h-3.5 w-3.5 text-warning-strong" />
           {tx('P0/P1/P2 are provisional screening labels, NOT official procurement instructions.',
             'تصنيفات P0/P1/P2 استرشادية وليست تعليمات شراء رسمية.')}
         </span>
-        <Link href="/dashboard?module=data-health" className="inline-flex items-center gap-1 text-[#85c9b1] hover:underline">
+        <Link href="/dashboard?module=data-health" className="inline-flex items-center gap-1 text-content-accent hover:underline">
           {tx('Data governance & source health', 'حوكمة البيانات وصحة المصادر')}
           <ArrowUpRight className="h-3.5 w-3.5" />
         </Link>

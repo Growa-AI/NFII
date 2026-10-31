@@ -104,11 +104,11 @@ export function WatchtowerOperationsPulse(){
       className="nfii-panel p-4 md:p-5">
       <div className="flex flex-wrap items-start justify-between gap-3">
         <div>
-          <p className="nfii-label !text-[#c8a860]">{tx('OPERATIONS / SOURCE-BACKED','العمليات / مصادر موثقة')}</p>
-          <h2 className="mt-1 text-[18px] font-semibold text-[#f0f0f0]">
+          <p className="nfii-label !text-content-accent">{tx('OPERATIONS / SOURCE-BACKED','العمليات / مصادر موثقة')}</p>
+          <h2 className="mt-1 text-[18px] font-semibold text-content">
             {tx('Operational supply network', 'شبكة الإمداد التشغيلية')}
           </h2>
-          <p className="mt-1 text-[11px] text-[#9aabc1]">
+          <p className="mt-1 text-[11px] text-content-soft">
             {tx(
               'Connected records across purchasing, shipment tracking, warehouses and approved reserve movements.',
               'سجلات مترابطة للمشتريات وتتبع الشحنات والمستودعات وحركات المخزون المعتمدة.'
@@ -122,20 +122,20 @@ export function WatchtowerOperationsPulse(){
         </button>
       </div>
 
-      {truncated&&<p role="status" className="mt-3 text-[11px] text-[#e3b57d]">
+      {truncated&&<p role="status" className="mt-3 text-[11px] text-warning-strong">
         {tx('Records exceed the per-table display limit; summary totals may be incomplete.',
           'تجاوزت السجلات حد العرض؛ قد تكون الإجماليات غير مكتملة.')}
       </p>}
       {orgLoading||loading?(
-        <p role="status" className="mt-4 text-[12px] text-[#9ab0c6]">
+        <p role="status" className="mt-4 text-[12px] text-content-soft">
           {tx('Loading operational data…','جارٍ تحميل البيانات التشغيلية…')}
         </p>
       ):!orgId?(
-        <p className="mt-4 text-[12px] text-[#9ab0c6]">
+        <p className="mt-4 text-[12px] text-content-soft">
           {tx('Select an authorized organization.','اختر مؤسسة مخولة.')}
         </p>
       ):error?(
-        <div className="mt-4 rounded-sm border border-[#846b48] bg-[#241e16] p-3 text-[12px] text-[#d9bc94]">
+        <div className="mt-4 rounded-full border border-warning-line bg-muted p-3 text-[12px] text-warning-strong">
           {tx('Operational data unavailable: ','البيانات التشغيلية غير متاحة: ')}{error}
           <p className="mt-1 text-[11px]">
             {tx('Migration 00041 must be applied; no values are substituted.',
@@ -144,11 +144,11 @@ export function WatchtowerOperationsPulse(){
         </div>
       ):(
         <div className="mt-4 flex flex-wrap gap-3">
-          <span className="inline-flex items-center gap-1.5 rounded-sm border border-[#365e51] bg-[#102c27] px-2.5 py-1.5 text-[10px] text-[#a0dcc4]">
+          <span className="inline-flex items-center gap-1.5 rounded-full border border-line-accent bg-muted px-2.5 py-1.5 text-[10px] text-content-accent">
             <ClipboardCheck className="h-3.5 w-3.5"/>
             {metrics?.pendingApprovals??'—'} {tx('pending independent approvals','موافقات مستقلة معلقة')}
           </span>
-          <span className="inline-flex items-center rounded-sm border border-[#3f526a] bg-[#122338] px-2.5 py-1.5 text-[10px] text-[#bdcfe1]">
+          <span className="inline-flex items-center rounded-full border border-line bg-muted px-2.5 py-1.5 text-[10px] text-content">
             {tx('Physical reserve balance: ','رصيد المخزون الفعلي: ')}
             {metrics?pretty(metrics.physicalReserveTonnes):'—'} t
           </span>
@@ -159,25 +159,25 @@ export function WatchtowerOperationsPulse(){
         {modules.map(item=>{
           const Icon=item.icon
           return <Link key={item.href} href={item.href}
-            className="nfii-subpanel group flex min-h-[125px] flex-col justify-between p-3.5 hover:border-[#70c0a0]">
+            className="nfii-subpanel group flex min-h-[125px] flex-col justify-between p-3.5 hover:border-line-accent">
             <div className="flex items-start justify-between gap-3">
-              <Icon className="h-5 w-5 text-[#78a8f0]" strokeWidth={1.5}/>
-              <ArrowUpRight className="h-4 w-4 text-[#7e95af] group-hover:text-[#70c0a0]"/>
+              <Icon className="h-5 w-5 text-content-accent" strokeWidth={1.5}/>
+              <ArrowUpRight className="h-4 w-4 text-content-soft group-hover:text-content-accent"/>
             </div>
             <div>
               <div className="flex items-baseline gap-2">
-                <p className="text-[13px] font-semibold text-[#f0f0f0]">{tx(item.en,item.ar)}</p>
-                <span className="font-mono text-[15px] text-[#c8a860]">
+                <p className="text-[13px] font-semibold text-content">{tx(item.en,item.ar)}</p>
+                <span className="font-mono text-[15px] text-content-accent">
                   {item.value??'—'}
                 </span>
               </div>
-              <p className="mt-0.5 text-[10px] text-[#9bafc4]">{tx(item.unitEn,item.unitAr)}</p>
-              <p className="mt-2 text-[11px] text-[#b1c0d3]">{tx(item.detailEn,item.detailAr)}</p>
+              <p className="mt-0.5 text-[10px] text-content-soft">{tx(item.unitEn,item.unitAr)}</p>
+              <p className="mt-2 text-[11px] text-content-soft">{tx(item.detailEn,item.detailAr)}</p>
             </div>
           </Link>
         })}
       </div>
-      <p className="mt-3 text-[10px] leading-relaxed text-[#889eb5]">
+      <p className="mt-3 text-[10px] leading-relaxed text-content-soft">
         {tx(
           'Operator-entered and independently reviewed operational records. No customs API, live port telemetry, payment instruction or cross-agency national aggregation. These quantities are not silently merged into the Food Balance.',
           'سجلات تشغيلية أدخلها المستخدمون وتخضع للمراجعة المستقلة. لا يوجد ربط مباشر بالجمارك أو الموانئ أو المدفوعات أو تجميع وطني بين الجهات. لا تُدمج هذه الكميات تلقائياً في الميزان الغذائي.'
