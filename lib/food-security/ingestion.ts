@@ -186,12 +186,12 @@ export function validateFoodSourceSubmission(input: unknown): FoodSourceValidati
 }
 
 /** Explicit allowlist: neither verification fields nor organization scope are client-writable columns. */
-export function foodSourceInsertPayload(value: FoodSourceSubmission, actorId: string) {
+export function foodSourceInsertPayload(value: FoodSourceSubmission, actorId: string, sourceKind: 'manual' | 'csv' = 'manual') {
   const base = {
     organization_id: value.organizationId,
     commodity_code: value.commodityId,
     source_ref: value.sourceRef,
-    source_kind: 'manual',
+    source_kind: sourceKind,
     verification_status: 'pending_review',
     submitted_by: actorId,
     data_mode: value.dataMode,

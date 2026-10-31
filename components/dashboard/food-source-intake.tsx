@@ -5,6 +5,7 @@ import { useActiveOrganizationOptional } from '@/contexts/active-organization-co
 import { useI18n } from '@/lib/i18n'
 import type { FoodFlowType } from '@/lib/food-security/balance'
 import type { FoodSourceKind } from '@/lib/food-security/ingestion'
+import { FoodCsvImporter } from '@/components/dashboard/food-csv-importer'
 
 interface FoodSourceRow {
   id: string
@@ -276,6 +277,16 @@ export function FoodSourceIntake({
         </form>
       )}
 
+      {canEdit && (
+        <FoodCsvImporter
+          organizationId={organizationId}
+          commodityId={commodityId}
+          onImported={() => {
+            setReload(value => value + 1)
+            onRecordsChanged()
+          }}
+        />
+      )}
       <div className="mt-4 space-y-2">
         <h3 className="text-[13px] font-medium text-content">
           {label('Latest source records', 'أحدث السجلات المصدرية')}
