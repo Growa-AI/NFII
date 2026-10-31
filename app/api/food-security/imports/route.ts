@@ -122,7 +122,7 @@ export async function POST(request: Request) {
     return respond({ error: 'Invalid batch size' }, 400)
   }
   // A SINGLE insert statement: if one violates constraints, no rows commit.
-  const { data, error } = await admin.from(table).insert(payloads).select('id')
+  const { data, error } = await admin.from(table).insert(payloads as never).select('id')
   if (error) {
     if (error.code === '23505') return respond({
       error: 'Duplicate source identity; no records were imported. Refresh and preview again.',

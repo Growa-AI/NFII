@@ -102,7 +102,7 @@ export async function POST(request: Request) {
 
   const admin = createAdminClient()
   const { data, error } = await admin.from(FOOD_SOURCE_TABLES[record.kind])
-    .insert(foodSourceInsertPayload(record, gate.context.userId))
+    .insert(foodSourceInsertPayload(record, gate.context.userId) as never)
     .select('id, verification_status')
     .single()
 

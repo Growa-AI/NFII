@@ -11,6 +11,7 @@ interface FoodSourceRow {
   id: string
   kind: FoodSourceKind
   sourceRef: string
+  sourceKind: string
   dataMode: string
   verificationStatus: 'pending_review' | 'verified' | 'rejected'
   submittedBy: string | null
