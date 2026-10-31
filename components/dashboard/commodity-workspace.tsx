@@ -27,6 +27,7 @@ import { Notice, Tile } from '@/components/brand/layout'
 import { Metric } from '@/components/brand/ui'
 import { StatusTag } from '@/components/brand/status'
 import { sharedFetch } from '@/lib/client/shared-fetch'
+import { FoodBalancePanel } from '@/components/dashboard/food-balance-panel'
 
 export function CommodityWorkspace() {
   const { tr, locale } = useI18n()
@@ -39,7 +40,7 @@ export function CommodityWorkspace() {
     loading: opsLoading,
     error: opsError,
     cropAggregates,
-    producerRanking,
+    insights,
     producerLabelsById,
   } = useIntelligenceData()
 
@@ -75,23 +76,30 @@ export function CommodityWorkspace() {
     const aliases = commodity.cropAliases.map((alias) => alias.toLowerCase())
     return summary.signals.filter((signal) => {
       const haystack = `${signal.title} ${signal.summary} ${signal.metric || ''}`.toLowerCase()
-      return aliases.some((alias) => haystack.includes(alias)) || signal.type === 'supply'
+      return aliases.some((alias) => haystack.includes(alias))
     })
   }, [commodity, summary])
 
   const producingFarms = useMemo(() => {
-    if (!commodityAggregate) return []
-    /* `producerRanking` is { mostEfficient, leastEfficient }, not a list. */
-    return [...producerRanking.mostEfficient]
-      .sort((a, b) => b.productionTons - a.productionTons)
+    const aliases = commodity.cropAliases.map((alias) => alias.toLowerCase())
+    const totalsByPoint = new Map<string, number>()
+    for (const row of insights) {
+      if (!aliases.some((alias) => row.cropName.toLowerCase().includes(alias))) continue
+      totalsByPoint.set(
+        row.pointId,
+        (totalsByPoint.get(row.pointId) ?? 0) + row.estimatedProductionTons,
+      )
+    }
+    return Array.from(totalsByPoint.entries())
+      .sort(([, a], [, b]) => b - a)
       .slice(0, 6)
-      .map((entry, index) => ({
-      rank: index + 1,
-      name: producerLabelsById[entry.pointId] || entry.pointId,
-      productionTons: entry.productionTons,
-      pointId: entry.pointId,
-    }))
-  }, [commodityAggregate, producerLabelsById, producerRanking])
+      .map(([pointId, productionTons], index) => ({
+        rank: index + 1,
+        name: producerLabelsById[pointId] || pointId,
+        productionTons,
+        pointId,
+      }))
+  }, [commodity, insights, producerLabelsById])
 
   const coverageValue = summary?.supply.coverage?.value
   const coverageLabel =
@@ -108,7 +116,7 @@ export function CommodityWorkspace() {
     const focus = [
       `Commodity focus: ${commodity.name} (${timeframe}).`,
       `Domestic production: ${commodityAggregate ? `${formatNumber(commodityAggregate.totalProductionTons)} t` : 'unknown'}; farms: ${commodityAggregate?.farmsCount ?? 'unknown'}.`,
-      `National coverage: ${coverageValue ?? 'unknown'}%.`,
+      `Legacy Watchtower coverage (all commodities, NOT this commodity): ${coverageValue ?? 'unknown'}%.`,
       relatedSignals.length ? `Linked signals: ${relatedSignals.map((signal) => signal.title).join('; ')}.` : 'No linked signals.',
     ].join('\n')
     return { ...base, digest: `${focus}\n\n${base.digest}` }
@@ -135,13 +143,13 @@ export function CommodityWorkspace() {
           icon={PieChart}
           meta={[
             {
-              label: tr('Domestic production'),
+              label: tr('Estimated farm production'),
               value: commodityAggregate
                 ? `${formatNumber(commodityAggregate.totalProductionTons)} t`
                 : '—',
             },
             {
-              label: tr('National coverage'),
+              label: tr('Legacy national coverage (all commodities)'),
               value: coverageLabel,
               accent: coverageValue !== null && coverageValue !== undefined && coverageValue < 70,
             },
@@ -178,11 +186,15 @@ export function CommodityWorkspace() {
       </header>
 
       <div className="mt-4">
+        <FoodBalancePanel commodityId={commodity.id} />
+      </div>
+
+      <div className="mt-4">
         <IntelligenceInvestigationLayout
           currentCondition={
             <div className="grid grid-cols-2 gap-3">
               <MetricTile
-                label={tr('Domestic production')}
+                label={tr('Estimated farm production')}
                 value={commodityAggregate ? `${formatNumber(commodityAggregate.totalProductionTons)} t` : '—'}
                 loading={opsLoading}
               />
@@ -192,7 +204,7 @@ export function CommodityWorkspace() {
                 loading={opsLoading}
               />
               <MetricTile
-                label={tr('Contract volume')}
+                label={tr('National contract volume (all commodities)')}
                 value={
                   summary?.supply.availableVolume?.value
                     ? `${formatNumber(summary.supply.availableVolume.value)} ${summary.supply.availableVolume.unit}`
@@ -201,7 +213,7 @@ export function CommodityWorkspace() {
                 loading={summaryLoading}
               />
               <MetricTile
-                label={tr('At-risk deliveries')}
+                label={tr('National at-risk deliveries (all commodities)')}
                 value={
                   summary?.supply.atRiskDeliveries?.value
                     ? String(summary.supply.atRiskDeliveries.value)
@@ -232,15 +244,15 @@ export function CommodityWorkspace() {
                 <div className="space-y-2 text-sm text-content">
                   <ChainStep icon={Sprout} label={tr('Agricultural capacity')} value={commodityAggregate ? tr('{count} active areas', { count: commodityAggregate.polygonsCount }) : tr('Unknown')} />
                   <ChainStep icon={PieChart} label={tr('Current production')} value={commodityAggregate ? `${formatNumber(commodityAggregate.totalProductionTons)} t` : tr('Unknown')} />
-                  <ChainStep icon={ShoppingBasket} label={tr('Domestic supply position')} value={coverageLabel} />
-                  <ChainStep icon={Truck} label={tr('Inbound supply')} value={summary?.supply.availableVolume?.value ? tr('Contracted volume available') : tr('Limited linkage')} />
+                  <ChainStep icon={ShoppingBasket} label={tr('Legacy national coverage (all commodities)')} value={coverageLabel} />
+                  <ChainStep icon={Truck} label={tr('Commodity imports')} value={tr('See supply and demand balance above')} />
                 </div>
               </InvestigationSection>
               <InvestigationSection title={tr('Resource exposure')} compact>
                 <div className="space-y-2 text-sm text-content">
                   <p>{tr('Water intensity: {value}', { value: commodityAggregate ? `${formatNumber(commodityAggregate.totalWaterM3 / Math.max(1, commodityAggregate.totalProductionTons))} m³/t` : '—' })}</p>
                   <p>{tr('Energy intensity: {value}', { value: commodityAggregate ? `${formatNumber(commodityAggregate.totalEnergyKwh / Math.max(1, commodityAggregate.totalProductionTons))} kWh/t` : '—' })}</p>
-                  <p>{tr('Climate exposure: {value} heat risk index', { value: summary?.climate.heatRisk.value ?? '—' })}</p>
+                  <p>{tr('National climate exposure: {value} heat risk index', { value: summary?.climate.heatRisk.value ?? '—' })}</p>
                   <p>{tr('Data confidence: {value}', { value: opsError ? tr('Limited') : opsLoading ? tr('Loading') : tr('Moderate evidence') })}</p>
                 </div>
               </InvestigationSection>
