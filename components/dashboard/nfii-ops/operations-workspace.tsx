@@ -109,7 +109,7 @@ function Status({status}:{status:string|undefined}){
     statusClass(status??'unknown')}>{String(status??'—').replaceAll('_',' ')}</span>
 }
 
-function getLabel(row:OperationsRow):string {
+function getLabel(row:Partial<OperationsRow> & {id:string}):string {
   return row.name||row.contract_ref||row.order_ref||row.shipment_ref||
     row.lot_ref||row.release_ref||row.code||row.id.slice(0,8)
 }
