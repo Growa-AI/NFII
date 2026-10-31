@@ -1,4 +1,7 @@
 -- NFII User Management — Phase 1 security and authorization hardening
+-- REVISION NFII_00031_R2: does NOT define get_my_auth_capabilities (see 00032 / 00035).
+-- If 00032 already OK and 00031 fails with 42P13 on that function, you are on an OLD script:
+-- run 00036_phase1_completion_skip_auth_caps.sql instead of re-running 00031.
 -- Idempotent where practical. Does not drop user data.
 
 -- -----------------------------------------------------------------------------
@@ -364,6 +367,8 @@ CREATE POLICY impersonation_state_select_own
 -- -----------------------------------------------------------------------------
 -- Organization creation — restrict privileged org types
 -- -----------------------------------------------------------------------------
+DROP FUNCTION IF EXISTS public.create_organization_with_owner(TEXT, TEXT, TEXT, TEXT);
+
 CREATE OR REPLACE FUNCTION public.create_organization_with_owner(
   org_name TEXT,
   org_slug TEXT,

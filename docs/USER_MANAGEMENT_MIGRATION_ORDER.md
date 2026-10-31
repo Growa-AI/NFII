@@ -11,11 +11,19 @@ Apply in the SQL editor in this order:
 
 Skip `00033` (no-op placeholder).
 
+## 00031 fails with 42P13 on `get_my_auth_capabilities` but 00032 is OK
+
+You still have an **old** `00031` script (four-column `CREATE OR REPLACE` on that RPC). The database already has the **five-column** function from 00032/00035.
+
+1. **Do not** re-run old 00031.
+2. Run **`00036_phase1_completion_skip_auth_caps.sql`** — applies the rest of Phase 1 (trigger, org RPC, RLS) without touching auth capabilities.
+3. For new environments, use **00031 R2** from `main` (search the file: there must be **no** `CREATE OR REPLACE FUNCTION public.get_my_auth_capabilities`).
+
 ## If you already ran 00034 and 00035
 
-1. Pull **latest** `00031` and `00032` from `main`.
-2. Run **full** `00031` (it does **not** recreate `get_my_auth_capabilities`).
-3. Run **full** `00032` (uses `DROP FUNCTION` before the 5-column RPC).
+1. Pull **latest** `00031` (R2) and `00032` from `main`.
+2. Run **full** `00031` only if the file has **no** `CREATE` for `get_my_auth_capabilities`; otherwise use **00036** after 00032.
+3. Run **full** `00032` if not already applied.
 4. Re-run `00035` only if `get_my_auth_capabilities` is still missing or wrong.
 
 Verify:
