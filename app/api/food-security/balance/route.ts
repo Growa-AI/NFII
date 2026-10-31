@@ -76,6 +76,7 @@ export async function GET(request: Request) {
       .select('id, as_of_date, usable_tonnes, source_ref, data_mode')
       .eq('organization_id', organizationId)
       .eq('commodity_code', commodityId)
+      .eq('verification_status', 'verified')
       .lt('as_of_date', fromDate)
       .order('as_of_date', { ascending: false })
       .limit(1)
@@ -84,6 +85,7 @@ export async function GET(request: Request) {
       .select('id, external_key, flow_type, effective_date, quantity_tonnes, source_ref, data_mode')
       .eq('organization_id', organizationId)
       .eq('commodity_code', commodityId)
+      .eq('verification_status', 'verified')
       .gte('effective_date', fromDate)
       .lte('effective_date', toDate)
       .limit(1000),
@@ -91,6 +93,7 @@ export async function GET(request: Request) {
       .select('id, flow_type, start_date, end_date, status, source_ref, data_mode')
       .eq('organization_id', organizationId)
       .eq('commodity_code', commodityId)
+      .eq('verification_status', 'verified')
       .lte('start_date', toDate)
       .gte('end_date', fromDate)
       .limit(1000),
@@ -99,9 +102,9 @@ export async function GET(request: Request) {
   const errors = [stockResult.error, flowResult.error, coverageResult.error].filter(Boolean)
   if (errors.length) {
     console.error('[food-balance] read failed', errors.map((error) => error?.code))
-    const missingMigration = errors.some((error) => error?.code === '42P01' || error?.code === 'PGRST205')
+    const missingMigration = errors.some((error) => error?.code === '42P01' || error?.code === 'PGRST205' || error?.code === '42703')
     return noStore({
-      error: missingMigration ? 'Food balance schema not installed (migration 00039)' : 'Food balance data unavailable',
+      error: missingMigration ? 'Food balance schema incomplete; migrations 00039 and 00040 are required' : 'Food balance data unavailable',
       unavailable: true,
     }, 503)
   }
@@ -140,7 +143,7 @@ export async function GET(request: Request) {
       commodityId, fromDate, toDate, sourceMode: 'live',
       stocks: stockRows, flows: flowRows, coverage: coverageRows,
     })
-    return noStore({ balance, dataSource: 'LIVE', notice: 'Per-organization balance only; not a national aggregate.' })
+    return noStore({ balance, dataSource: 'LIVE', notice: 'Independently reviewed organization-source balance only; not a verified national aggregate.' })
   } catch (error) {
     console.error('[food-balance] validation failed', error instanceof Error ? error.message : error)
     return noStore({ error: 'Food balance inputs failed validation', unavailable: true }, 422)
