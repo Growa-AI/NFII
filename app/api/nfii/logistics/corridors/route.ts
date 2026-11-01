@@ -5,6 +5,7 @@ import {validFoodUuid} from '@/lib/food-security/ingestion'
 import {validateLaneInput,CARGO_SPECS,getExportHub} from '@/lib/nfii/logistics-lanes'
 import {collectLogisticsEvidence} from '@/lib/nfii/logistics-providers'
 import {fetchFreightEstimate} from '@/lib/nfii/logistics-freight-benchmark'
+import {makeRouteMapOverlays} from '@/lib/nfii/logistics-route-map'
 import {buildScreenedRoutes,LOGISTICS_DATA_RULES,type RateInput} from '@/lib/nfii/logistics-screening'
 import {countryName} from '@/lib/nfii/world-countries'
 import {findLogisticsSupplierOrigins,hasSupplierInOrigin,type SupplierOriginScope} from '@/lib/nfii/logistics-supplier-origins'
@@ -85,6 +86,7 @@ export async function GET(request:Request){
       air:{name:hub.airport,code:hub.iata,coordinates:hub.air},
     }:null,
     routes:screened,
+    mapRoutes:makeRouteMapOverlays(screened,parsed.country,evidence.seaRoutes),
     freightBenchmark:{...freight,sourceName:'Freightos marketplace estimates',
       quoteStatus:'non_binding_benchmark' as const},
     sourceStatus:evidence.states,
