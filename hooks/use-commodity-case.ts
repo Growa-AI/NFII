@@ -1,15 +1,12 @@
 'use client'
 
-import { useEffect, useMemo, useState } from 'react'
+import { useEffect, useState } from 'react'
 import { useOrganization } from '@/hooks/use-organization'
-import { calculateFoodBalance, type FoodBalanceResult } from '@/lib/food-security/balance'
-import { buildQatarIllustrativeFoodBalanceInput } from '@/lib/food-security/demo-data'
+import type { FoodBalanceResult } from '@/lib/food-security/balance'
 import {
-  EMPTY_OPERATIONS, previewOperationsSnapshot,
+  EMPTY_OPERATIONS,
   type OperationsResponse, type OperationsSnapshot,
 } from '@/lib/nfii/operations-types'
-
-export type CommodityDataSelection = 'auto' | 'live' | 'example'
 
 function qatarToday(): string {
   const parts = new Intl.DateTimeFormat('en-US', {
@@ -28,14 +25,12 @@ type FoodResponse = {
 /**
  * Single source of truth for Commodity Intelligence and the agent workbench.
  *
- * Explicit source separation is critical: real balances are never combined
- * with illustrative supplier shipments/lots as if they were reconciled.
- * The existing seed preview is in-memory and never written to Supabase.
+ * Organization-scoped reviewed sources only. Missing evidence remains unknown:
+ * synthetic seed data must never appear as production commodity intelligence.
  */
 export function useCommodityCase(commodityId: string, days: 7 | 30 | 90 | 180) {
   const { organization, loading: organizationLoading } = useOrganization()
   const organizationId = organization?.id ?? null
-  const [selection, setSelection] = useState<CommodityDataSelection>('auto')
   const [refreshKey, setRefreshKey] = useState(0)
   const [loading, setLoading] = useState(false)
   const [liveBalance, setLiveBalance] = useState<FoodBalanceResult | null>(null)
@@ -44,12 +39,6 @@ export function useCommodityCase(commodityId: string, days: 7 | 30 | 90 | 180) {
   const [operationsError, setOperationsError] = useState<string | null>(null)
 
   const today = qatarToday()
-  const exampleBalance = useMemo(
-    () => calculateFoodBalance(buildQatarIllustrativeFoodBalanceInput(commodityId, today, days)),
-    [commodityId, today, days],
-  )
-  const exampleOperations = useMemo(() => previewOperationsSnapshot(today), [today])
-
   useEffect(() => {
     setLiveBalance(null)
     setLiveOperations(null)
@@ -104,19 +93,14 @@ export function useCommodityCase(commodityId: string, days: 7 | 30 | 90 | 180) {
   const effectiveBalance = liveBalance?.commodityId === commodityId &&
     liveBalance.days === days && liveBalance.sourceMode === 'live' ? liveBalance : null
 
-  const mode: 'example' | 'live' = selection === 'example' ? 'example' :
-    selection === 'live' ? 'live' :
-    effectiveBalance?.status === 'complete' ? 'live' : 'example'
-
-  const balance = mode === 'example' ? exampleBalance : effectiveBalance
-  const operations = mode === 'example' ? exampleOperations : liveOperations ?? EMPTY_OPERATIONS
+  // No substitution of synthetic Qatar stock, imports or supplier operations.
+  const balance=effectiveBalance
+  const operations=liveOperations??EMPTY_OPERATIONS
 
   return {
     balance,
     operations,
-    mode,
-    selection,
-    setSelection,
+    mode: 'live' as const,
     organization,
     organizationId,
     organizationLoading,
