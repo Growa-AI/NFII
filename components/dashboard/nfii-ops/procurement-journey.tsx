@@ -218,7 +218,7 @@ export function ProcurementHome({
           </p>
         </div>
         <span className="rounded-full border border-line bg-muted px-2.5 py-1 text-[10px] text-content-soft">
-          {isPreview?tx('EXAMPLE DATA','بيانات توضيحية'):
+          {isPreview?tx('SOURCE UNAVAILABLE','المصدر غير متاح'):
             tx('LIVE ORGANIZATION','مؤسسة فعلية')}
         </span>
       </div>
@@ -262,8 +262,8 @@ export function ProcurementHome({
         <p className="mt-2 text-[16px] font-medium text-content">{nextTitle}</p>
         <p className="mt-1 text-[12px] leading-relaxed text-content-soft">
           {isPreview
-            ?tx('The visible example demonstrates the workflow. Select Live data on the page to create records for an authorized organization.',
-                'المثال المعروض يوضح سير العمل. اختر البيانات الفعلية لإنشاء سجلات لمؤسسة مخولة.')
+            ?tx('No authorized live register is available. Select an organization with access to create actual records.',
+                'لا يتوفر سجل فعلي مصرح به. اختر مؤسسة يمكن الوصول إليها لإنشاء السجلات.')
             :!canEdit
               ?tx('This organization can be viewed. Writing new supplier, contract or order records requires supply.edit permission.',
                   'يمكن عرض بيانات هذه المؤسسة. يتطلب إنشاء السجلات صلاحية تعديل التوريد.')

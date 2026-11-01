@@ -84,7 +84,7 @@ export function ProcurementRecordPanel(props:Props){
     <div className="flex items-start justify-between gap-2 border-b border-line p-4">
       <div className="min-w-0">
         <p className="text-[10px] font-semibold uppercase text-sage-700">
-          {tx('RECORD DETAILS · '+(isPreview?'EXAMPLE':'LIVE'),'تفاصيل السجل')}
+          {tx('RECORD DETAILS · '+(isPreview?'READ ONLY':'LIVE'),'تفاصيل السجل')}
         </p>
         <h3 className="mt-1 break-words text-[16px] font-semibold text-content">
           {procurementRecordLabel(record)}
@@ -239,8 +239,8 @@ export function ProcurementRecordPanel(props:Props){
       </div>}
       {isPreview&&<p className="text-[11px] text-content-soft">
         <Users className="me-1 inline h-3.5 w-3.5"/>
-        {tx('Example only. Change to Live data to create or approve records.',
-          'مثال فقط، لا يمكن إنشاء عمليات أو اعتمادها.')}
+        {tx('Read-only: an accessible organization register is required before changes can be approved.',
+          'للقراءة فقط: يلزم سجل مؤسسة فعلي متاح لاعتماد التغييرات.')}
       </p>}
     </div>
   </section>
