@@ -1,4 +1,4 @@
-import {getExportHub,QATAR_PORT,QATAR_AIR,type GeoPoint} from './logistics-lanes'
+import {getExportHub,QATAR_PORT,type GeoPoint} from './logistics-lanes'
 import type {RouteInputs} from './logistics-screening'
 
 type Obj=Record<string,unknown>
