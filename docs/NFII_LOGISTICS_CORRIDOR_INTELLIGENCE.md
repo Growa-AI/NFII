@@ -139,3 +139,36 @@ refrigerated freight RFQs, live vessel positions, customs rates, actual
 shipment tracking, and global insurance quotes. These require licensed
 providers and explicit account configuration; no surrogate data is shown
 as a real quote.
+
+## Verified-only routes and incident context (2026-11-01 correction)
+
+**Correction of misleading previous outputs**: the original screening repeatedly
+showed numerical risk scores such as 43/47/72/84 and pseudo-precise air
+journeys such as 2.8/3.8 days. Those numbers came from fixed additive
+penalties and assumed handling time. **They have been removed**.
+Without a carrier schedule/ETA, air/road transit times are now **N/A**.
+
+The map draws **only SeaRoutes navigable GeoJSON** that has been validated
+against the origin, Hamad Port and, for hub options, the named transfer point.
+If the provider is absent or a geometry fails validation, only the origin
+and destination markers are shown. Neither straight lines over land nor
+fabricated connections via Jebel Ali, Salalah or Dubai are drawn. Maritime
+hub alternatives are not listed without a valid matching geometry.
+The shortest sea path is a theoretical navigable route, **not evidence
+that a liner operates a direct commercial service**.
+
+The old risk **0–100 heuristic** has been retired. Risk context now presents
+**GDACS official orange/red alerts** within a 400 km search radius of
+the reference origin port or Qatar over the last 21 days, using
+https://www.gdacs.org/gdacsapi/api/events/geteventlist/SEARCH .
+Each result displays event severity, kind, location proximity and a
+source link. This is NOT route-wide hazard coverage, vessel insurance
+risk, a confirmed disruption or a probability. Provider failures are
+shown as **risk unknown**, not as safe/low risk. A successful query with
+no nearby alerts is NOT proof that the itinerary is safe.
+World Bank historical LPI and departure-port Open-Meteo waves remain
+separately attributed context, not numerical penalty points.
+
+SeaRoutes routing durations remain theoretical vessel voyage times.
+No actual carrier schedules, ocean freight booking, or heavy-truck ETA
+have been obtained unless a future licensed source explicitly supplies them.
