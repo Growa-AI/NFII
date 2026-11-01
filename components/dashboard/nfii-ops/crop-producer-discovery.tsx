@@ -7,6 +7,7 @@ import {
 } from 'lucide-react'
 import {useI18n} from '@/lib/i18n'
 import {COMMODITY_CATALOG} from '@/lib/platform/commodity-catalog'
+import {WORLD_COUNTRIES} from '@/lib/nfii/world-countries'
 import {
   FAIRTSA_REGISTRY_URL,FAIRTSA_EXCERPT_CHECKED,
   GLOBALGAP_REGISTRY_URL,USDA_ORGANIC_REGISTRY_URL,
@@ -27,15 +28,13 @@ type CropResult={
   sourceCount:number
   countryCount:number
   evidenceBreakdown:Record<string,number>
+  research:'curated'|'mapped'|'places'
+  researchStatus:'not_requested'|'available'|'no_matches'|'not_configured'|'unavailable'
+  researchMessage:string
+  documentedCount:number
+  exploratoryCount:number
 }
 
-const SEARCH_COUNTRIES=[
-  ['','All countries'],['IN','India'],['TH','Thailand'],
-  ['TR','Türkiye'],['QA','Qatar'],['EG','Egypt'],
-  ['AU','Australia'],['ZA','South Africa'],
-  ['PK','Pakistan'],['BR','Brazil'],['NL','Netherlands'],
-  ['ES','Spain'],['IT','Italy'],['SA','Saudi Arabia'],
-] as const
 
 export function CropProducerDiscovery({organizationId}:{organizationId:string|null}){
   const {locale}=useI18n()
@@ -43,6 +42,7 @@ export function CropProducerDiscovery({organizationId}:{organizationId:string|nu
   const tx=(en:string,arabic:string)=>ar?arabic:en
   const [crop,setCrop]=useState('rice')
   const [country,setCountry]=useState('')
+  const [research,setResearch]=useState<'curated'|'mapped'|'places'>('mapped')
   const [data,setData]=useState<CropResult|null>(null)
   const [queryLoading,setQueryLoading]=useState(false)
   const [error,setError]=useState('')
@@ -70,7 +70,7 @@ export function CropProducerDiscovery({organizationId}:{organizationId:string|nu
     controller.current=abort
     setQueryLoading(true)
     const params=new URLSearchParams({
-      commodity:crop,country,
+      commodity:crop,country,research,
       ...(organizationId?{organizationId}:{}),
     })
     try{
@@ -166,12 +166,13 @@ export function CropProducerDiscovery({organizationId}:{organizationId:string|nu
         <span className="nfii-label">{tx('2. Country (optional)','٢. الدولة (اختياري)')}</span>
         <select className="nfii-input min-h-11" value={country}
           onChange={event=>{invalidate();setCountry(event.target.value)}}>
-          {SEARCH_COUNTRIES.map(([code,label])=><option key={code||'all'} value={code}>
-            {code?label:tx(label,'جميع الدول')}
+          <option value="">{tx('All countries (published directory only)','جميع الدول (الدليل المنشور فقط)')}</option>
+          {WORLD_COUNTRIES.map(item=><option key={item.code} value={item.code}>
+            {item.name}
           </option>)}
         </select>
       </label>
-      <button type="submit" disabled={queryLoading}
+      <button type="submit" disabled={queryLoading||(research==='places'&&(!country||!organizationId))}
         className="nfii-button inline-flex min-h-11 items-center justify-center gap-2 disabled:opacity-40">
         {queryLoading?<Loader2 className="h-4 w-4 animate-spin"/>:
           <Search className="h-4 w-4"/>}
@@ -179,6 +180,28 @@ export function CropProducerDiscovery({organizationId}:{organizationId:string|nu
           tx('Find crop matches','بحث حسب المحصول')}
       </button>
     </form>
+
+    <div className="flex flex-wrap items-center gap-3 rounded-lg border border-line p-3">
+      <label className="flex min-w-0 flex-1 items-center gap-2">
+        <span className="shrink-0 text-[11px] text-content-soft">{tx('3. Search source','٣. مصدر البحث')}</span>
+        <select className="nfii-input min-h-10" value={research}
+          onChange={event=>{invalidate();setResearch(event.target.value as 'curated'|'mapped'|'places')}}>
+          <option value="mapped">{tx('Published leads + free mapped crop locations','جهات منشورة + مواقع المحاصيل المفتوحة')}</option>
+          <option value="curated">{tx('Published source listings only','السجلات المنشورة فقط')}</option>
+          <option value="places">{tx('Published leads + Google Places (paid)','جهات منشورة + جوجل المدفوع')}</option>
+        </select>
+      </label>
+      <p className="w-full text-[11px] text-content-soft">
+        {research==='mapped'?
+          tx('Free OpenStreetMap search uses explicit crop tags on named locations; those are not verified companies.',
+            'البحث في خرائط مفتوحة عن مواقع زراعية مسماة؛ ليست شركات تم التحقق منها.'):
+        research==='places'?
+          tx('Google Places uses paid, server-side billing and requires a selected country and authorized organization. Keyword matches are unverified.',
+            'يتطلب بحث جوجل المدفوع دولة محددة ومؤسسة مخولة. نتائج الكلمات المفتاحية غير محققة.'):
+          tx('Only previously documented names from curated registries; missing matches do not imply no producers exist.',
+            'الأسماء المنشورة فقط؛ عدم وجود نتائج لا يعني عدم وجود منتجين.')}
+      </p>
+    </div>
 
     <p className="flex items-start gap-2 text-[11px] leading-relaxed text-content-soft">
       <ShieldAlert className="mt-0.5 h-4 w-4 shrink-0 text-warning-strong"/>
@@ -241,7 +264,9 @@ export function CropProducerDiscovery({organizationId}:{organizationId:string|nu
             return <article key={record.sourceUrl+record.recordId}
               className="rounded-lg border border-line bg-background p-4">
               <p className="text-[10px] font-semibold uppercase tracking-[.08em] text-sage-700">
-                {tx('DOCUMENTED CROP / SECTOR LINK','ارتباط موثق بالمحصول / القطاع')}
+                {tx(record.evidenceType==='keyword_business_listing'?'KEYWORD BUSINESS LEAD · PRODUCT UNVERIFIED':
+                  record.evidenceType==='community_mapped_crop_tag'?'COMMUNITY-MAPPED CROP LOCATION · COMPANY UNVERIFIED':
+                  'DOCUMENTED CROP / SECTOR LINK','ارتباط بالمحصول / القطاع مع مصدر')}
               </p>
               <h3 className="mt-1 text-[15px] font-medium text-content">
                 {record.organizationName}
