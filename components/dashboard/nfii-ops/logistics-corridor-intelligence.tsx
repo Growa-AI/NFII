@@ -1,0 +1,353 @@
+'use client'
+
+import {useEffect,useRef,useState,type FormEvent} from 'react'
+import {BarChart3,CheckCircle2,ExternalLink,Globe2,Loader2,
+  Route as RouteIcon,ShieldAlert,Ship,Plane,Truck} from 'lucide-react'
+import {COMMODITY_CATALOG} from '@/lib/platform/commodity-catalog'
+import {HUB_COUNTRIES,CARGO_SPECS} from '@/lib/nfii/logistics-lanes'
+import type {ScreenedRoute,Mode} from '@/lib/nfii/logistics-screening'
+import type {OperationsSnapshot} from '@/lib/nfii/operations-types'
+import {useI18n} from '@/lib/i18n'
+
+type ModelResponse={
+  context:{commodity:string;country:string;countryName:string;tonnes:number;
+    deliveryDeadlineDays:number;product:string;productClass:string;coldChain:boolean;
+    handling:string;importDestination:string}
+  routes:ScreenedRoute[]
+  sourceStatus:{searoutes:string;worldBank:string;marineWeather:string}
+  sources:{searoutes:string|null;worldBank:string|null;marineWeather:string|null}
+  dataWarnings:string[]
+  pricesDisclaimer:string;scheduleDisclaimer:string;riskDisclaimer:string
+  generatedAt:string;bookingAvailable:false
+}
+const format=(n:number|null,dp=1)=>n===null?'N/A':
+  n.toLocaleString('en-US',{minimumFractionDigits:dp,maximumFractionDigits:dp})
+const modes:Record<Mode,{en:string;ar:string;icon:typeof Ship}>={
+  sea:{en:'Sea',ar:'بحري',icon:Ship},
+  air:{en:'Air',ar:'جوي',icon:Plane},
+  road:{en:'Road',ar:'بري',icon:Truck},
+}
+const color=(band:string)=>band==='high'?'bg-critical':band==='elevated'?
+  'bg-warning':'bg-sage-600'
+type ShipmentChoice={id:string;title:string;country:string;commodity:string;tonnes:number}
+
+export function LogisticsCorridorIntelligence({
+  organizationId,operations,isPreview,
+}:{
+  organizationId:string|null
+  operations:OperationsSnapshot
+  isPreview:boolean
+}){
+  const {locale}=useI18n()
+  const ar=locale==='ar'
+  const tx=(en:string,arabic:string)=>ar?arabic:en
+  const [crop,setCrop]=useState('rice')
+  const [country,setCountry]=useState('IN')
+  const [tonnes,setTonnes]=useState('20')
+  const [deadline,setDeadline]=useState('60')
+  const [seaRate,setSeaRate]=useState('')
+  const [airRate,setAirRate]=useState('')
+  const [roadRate,setRoadRate]=useState('')
+  const [data,setData]=useState<ModelResponse|null>(null)
+  const [error,setError]=useState('')
+  const [busy,setBusy]=useState(false)
+  const [selected,setSelected]=useState<string|null>(null)
+  const current=useRef<AbortController|null>(null)
+  const [orderId,setOrderId]=useState('')
+  const orders:ShipmentChoice[]=operations.purchaseOrders
+    .filter(order=>order.status==='approved').flatMap(order=>{
+      const contract=operations.contracts.find(c=>c.id===order.contract_id)
+      const supplier=operations.suppliers.find(s=>s.id===contract?.supplier_id)
+      if(!contract||!supplier||!contract.commodity_code||
+        !CARGO_SPECS[contract.commodity_code]||
+        !HUB_COUNTRIES.some(item=>item.countryCode===supplier.country_code))return []
+      return [{id:order.id,title:order.order_ref??order.id.slice(0,8),
+        country:supplier.country_code!,commodity:contract.commodity_code,
+        tonnes:Number(order.ordered_tonnes??0)}]
+    })
+    .filter(o=>o.tonnes>0&&o.tonnes<=200)
+
+  useEffect(()=>{
+    return ()=>current.current?.abort()
+  },[])
+  const clear=()=>{
+    current.current?.abort()
+    current.current=null
+    setBusy(false);setData(null);setError('');setSelected(null)
+  }
+  const submit=async(e:FormEvent<HTMLFormElement>)=>{
+    e.preventDefault()
+    clear()
+    const controller=new AbortController()
+    current.current=controller
+    setBusy(true)
+    const params=new URLSearchParams({
+      commodity:crop,country,tonnes,limitDays:deadline,
+      ...(organizationId?{organizationId}:{}),
+      ...(seaRate?{seaRate}:{}),...(airRate?{airRate}:{}),
+      ...(roadRate?{roadRate}:{}),
+    })
+    try{
+      const response=await fetch('/api/nfii/logistics/corridors?'+params,{
+        cache:'no-store',signal:controller.signal,
+      })
+      const body=await response.json() as ModelResponse&{error?:string}
+      if(!response.ok)throw Error(body.error??'Route assessment unavailable')
+      if(!controller.signal.aborted){
+        setData(body);setSelected(body.routes[0]?.id??null)
+      }
+    }catch(reason){
+      if(!controller.signal.aborted)setError(reason instanceof Error?
+        reason.message:'Unknown provider error')
+    }finally{if(!controller.signal.aborted)setBusy(false)}
+  }
+  const chosen=data?.routes.find(r=>r.id===selected)
+  const maxRisk=Math.max(...(data?.routes.map(r=>r.riskScore)??[]),100)
+  const maxTime=Math.max(...(data?.routes.map(r=>r.estimatedDays??0)??[]),1)
+  const quoted=data?.routes.filter(r=>r.freightTotalQar!==null)??[]
+  const maxCost=Math.max(...quoted.map(r=>r.freightQarKg??0),.001)
+
+  return <section aria-label={tx('Food import corridor intelligence','تحليل مسارات استيراد الأغذية')}
+    className="nfii-panel space-y-4 p-4 md:p-5">
+    <header className="space-y-1">
+      <div className="flex items-center gap-2 text-sage-700">
+        <RouteIcon className="h-5 w-5"/>
+        <h2 className="text-[19px] font-semibold text-content">
+          {tx('Global food transport corridor screening','فحص مسارات نقل الغذاء العالمية')}
+        </h2>
+      </div>
+      <p className="text-[12px] leading-relaxed text-content-soft">
+        {tx('Compare possible sea, air and regional road corridors into Qatar. Transport quotes, schedules, border access and real shipments are NOT automatically confirmed.',
+          'مقارنة طرق بحرية وجوية وبرية محتملة إلى قطر. الأسعار والجداول والتصاريح تحتاج إلى تأكيد مستقل.')}
+      </p>
+    </header>
+    <form onSubmit={e=>void submit(e)} className="space-y-3 rounded-lg border border-line bg-background p-4">
+      {orders.length>0&&<label className="block space-y-1">
+        <span className="nfii-label">{tx('Optional: link research inputs to approved purchase order','اختياري: ربط بيانات البحث بأمر شراء معتمد')}</span>
+        <select className="nfii-input" value={orderId} onChange={e=>{
+          const value=e.target.value,set=orders.find(x=>x.id===value)
+          setOrderId(value)
+          if(set){setCrop(set.commodity);setCountry(set.country);setTonnes(String(set.tonnes));
+            setDeadline(String(CARGO_SPECS[set.commodity]?.maxTransitDays??15))}
+          clear()
+        }}>
+          <option value="">{tx('Independent scenario (no shipment created)','دراسة مستقلة، دون إنشاء شحنة')}</option>
+          {orders.map(order=><option key={order.id} value={order.id}>
+            {order.title} · {order.commodity} · {order.country} · {format(order.tonnes)} t
+          </option>)}
+        </select>
+      </label>}
+      <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+        <label className="space-y-1"><span className="nfii-label">{tx('Food product','المنتج الغذائي')}</span>
+          <select className="nfii-input" value={crop} onChange={e=>{
+            setCrop(e.target.value);setDeadline(String(CARGO_SPECS[e.target.value]?.maxTransitDays??15));
+            setOrderId('');clear()}}>
+            {COMMODITY_CATALOG.filter(item=>Boolean(CARGO_SPECS[item.id])).map(item=>
+              <option key={item.id} value={item.id}>{ar?item.nameAr:item.name}</option>)}
+          </select></label>
+        <label className="space-y-1"><span className="nfii-label">{tx('Export origin','بلد المنشأ')}</span>
+          <select className="nfii-input" value={country} onChange={e=>{
+            setCountry(e.target.value);setOrderId('');clear()}}>
+            {HUB_COUNTRIES.map(item=><option key={item.countryCode} value={item.countryCode}>
+              {item.countryName}
+            </option>)}
+          </select></label>
+        <label className="space-y-1"><span className="nfii-label">{tx('Shipment tonnes','طن الشحنة')}</span>
+          <input className="nfii-input" type="number" min=".1" max="200" step=".1"
+            required value={tonnes} onChange={e=>{setTonnes(e.target.value);clear()}}/>
+        </label>
+        <label className="space-y-1"><span className="nfii-label">{tx('Target days to Qatar','المدة المستهدفة إلى قطر')}</span>
+          <input className="nfii-input" type="number" min="1" max="120" step="1"
+            required value={deadline} onChange={e=>{setDeadline(e.target.value);clear()}}/>
+        </label>
+      </div>
+      <div>
+        <h3 className="text-[12px] font-semibold text-content">
+          {tx('Optional carrier / forwarder rates · QAR per tonne','أسعار الشحن الاختيارية بالريال للطن')}
+        </h3>
+        <p className="text-[10px] text-content-soft">
+          {tx('Leave blank until you have quotes; no fictional freight prices will be shown.',
+            'اتركها فارغة إذا لم تتوفر عروض نقل حقيقية.')}
+        </p>
+        <div className="mt-2 grid grid-cols-3 gap-2">
+          {([
+            ['Sea',seaRate,setSeaRate],['Air',airRate,setAirRate],
+            ['Road',roadRate,setRoadRate],
+          ] as const).map(([label,value,set])=>
+            <label className="space-y-1" key={label}>
+              <span className="nfii-label">{label}</span>
+              <input className="nfii-input" type="number" min=".01" max="99999"
+                step=".01" placeholder={tx('Quote','Preventivo')} value={value}
+                onChange={e=>{set(e.target.value);clear()}}/>
+            </label>)}
+        </div>
+      </div>
+      <button type="submit" disabled={busy}
+        className="nfii-button inline-flex min-h-10 items-center gap-2">
+        {busy?<Loader2 className="h-4 w-4 animate-spin"/>:<BarChart3 className="h-4 w-4"/>}
+        {busy?tx('Evaluating corridors…','جارٍ تقييم المسارات…'):
+          tx('Compare transport options','مقارنة خيارات النقل')}
+      </button>
+    </form>
+    {error&&<p role="alert" className="rounded-md border border-warning-line bg-warning-soft p-3 text-[12px] text-critical">{error}</p>}
+    {!data&&!busy&&!error&&<p className="rounded-md bg-muted/20 p-3 text-[12px] text-content-soft">
+      {tx('Choose a product, country and quantity, then compare transport options. No costs or routes are prefilled as real.',
+        'حدد المنتج والبلد والكمية، ثم قارن وسائل النقل.')}
+    </p>}
+    {data&&<div className="space-y-4">
+      <div className="grid grid-cols-2 gap-2 md:grid-cols-4">
+        {[
+          {label:tx('Corridor scenarios','سيناريوهات الطرق'),value:String(data.routes.length)},
+          {label:tx('Food requirement','متطلبات الغذاء'),value:data.context.coldChain?
+            tx('Temperature controlled','تبريد'):tx('Dry / ambient','جاف')},
+          {label:tx('Sea routes provider','مزود الطريق البحري'),
+            value:data.sourceStatus.searoutes==='available'?'SeaRoutes':'Not verified'},
+          {label:tx('Carrier freight rates','أسعار نقل من الشركات'),
+            value:quoted.length?String(new Set(quoted.map(r=>r.mode)).size)+' supplied':tx('None supplied','غير متوفرة')},
+        ].map(item=><div key={item.label} className="rounded-md border border-line bg-background p-3">
+          <p className="text-[10px] text-content-soft">{item.label}</p>
+          <strong className="mt-1 block text-[13px] text-content">{item.value}</strong>
+        </div>)}
+      </div>
+      <div className="grid gap-4 xl:grid-cols-2">
+        <div className="rounded-md border border-line p-3">
+          <h3 className="text-[12px] font-semibold text-content">
+            {tx('Screening risk · index, NOT probability','مؤشر مخاطر الفحص، وليس احتمالاً')}
+          </h3>
+          <p className="mt-1 text-[10px] text-content-soft">{tx('Lower is preferable. Missing live evidence increases uncertainty.','الأقل أفضل. غياب البيانات يزيد عدم اليقين.')}</p>
+          <div className="mt-3 space-y-2">
+            {data.routes.map(route=><div key={route.id} className="grid grid-cols-[105px_1fr_38px] items-center gap-2">
+              <span className="truncate text-[11px]" title={route.id}>{route.mode} {route.via?'via '+route.via.split(' ')[0]:''}</span>
+              <div className="h-3 rounded-full bg-muted">
+                <div className={'h-full rounded-full '+color(route.riskBand)}
+                  style={{width:(route.riskScore/maxRisk*100)+'%'}}/>
+              </div>
+              <span className="text-right text-[11px] tabular-nums">{route.riskScore}</span>
+            </div>)}
+          </div>
+        </div>
+        <div className="rounded-md border border-line p-3">
+          <h3 className="text-[12px] font-semibold text-content">
+            {tx('Estimated journey · days','مدة الرحلة التقديرية بالأيام')}
+          </h3>
+          <p className="mt-1 text-[10px] text-content-soft">
+            {tx('Air/road are model assumptions; sea stays N/A without routed data.',
+              'الجوي والبري تقدير نموذجي؛ البحري غير متاح دون بيانات الملاحة.')}
+          </p>
+          <div className="mt-3 space-y-2">
+            {data.routes.map(route=><div key={route.id} className="grid grid-cols-[105px_1fr_46px] items-center gap-2">
+              <span className="truncate text-[11px]">{route.mode} {route.via?'via '+route.via.split(' ')[0]:''}</span>
+              <div className="h-3 rounded-full bg-muted">
+                {route.estimatedDays!==null&&<div className="h-full rounded-full bg-sage-600"
+                  style={{width:route.estimatedDays/maxTime*100+'%'}}/>}
+              </div>
+              <span className="text-right text-[11px] tabular-nums">
+                {route.estimatedDays===null?'N/A':format(route.estimatedDays)}
+              </span>
+            </div>)}
+          </div>
+        </div>
+      </div>
+      <div className="rounded-md border border-line p-3">
+        <h3 className="text-[12px] font-semibold text-content">
+          {tx('Quoted freight costs · QAR/kg','تكاليف الشحن المقدمة · ريال/كغ')}
+        </h3>
+        {quoted.length?<div className="mt-3 space-y-2">
+          {quoted.map(route=><div key={route.id}
+            className="grid grid-cols-[115px_1fr_70px] items-center gap-2">
+            <span className="truncate text-[11px]">{route.mode} {route.via?'via '+route.via.split(' ')[0]:''}</span>
+            <div className="h-3 rounded-full bg-muted"><div
+              className="h-full rounded-full bg-sage-600"
+              style={{width:(route.freightQarKg??0)/maxCost*100+'%'}}/></div>
+            <span className="text-right text-[11px] tabular-nums">{format(route.freightQarKg,3)}</span>
+          </div>)}
+        </div>:<p className="mt-2 text-[11px] text-content-soft">
+          {tx('No actual freight quote entered. QAR/kg remains N/A rather than an invented price.',
+            'لا يوجد عرض سعر شحن مدخل. لا يتم إنشاء أسعار غير حقيقية.')}
+        </p>}
+      </div>
+      <div className="overflow-x-auto rounded-lg border border-line">
+        <table className="w-full min-w-[740px] text-left text-[11px]">
+          <thead className="bg-muted/30"><tr>
+            <th className="p-2">{tx('Corridor','المسار')}</th>
+            <th className="p-2">{tx('Method','الوسيلة')}</th>
+            <th className="p-2 text-right">{tx('Distance km','المسافة كم')}</th>
+            <th className="p-2 text-right">{tx('Days','الأيام')}</th>
+            <th className="p-2 text-right">{tx('QAR/kg','ريال/كغ')}</th>
+            <th className="p-2 text-right">{tx('Risk','المخاطر')}</th>
+            <th className="p-2">{tx('Evidence','الدليل')}</th>
+            <th className="p-2">{tx('Inspect','تفاصيل')}</th>
+          </tr></thead>
+          <tbody>{data.routes.map(route=><tr key={route.id} className="border-t border-line">
+            <td className="p-2 text-content">{route.from} → Qatar</td>
+            <td className="p-2 capitalize">{route.mode}{route.via?' via hub':''}</td>
+            <td className="p-2 text-right tabular-nums">{format(route.distanceKm,0)}</td>
+            <td className="p-2 text-right tabular-nums">{format(route.estimatedDays)}</td>
+            <td className="p-2 text-right tabular-nums">{format(route.freightQarKg,3)}</td>
+            <td className="p-2 text-right">{route.riskScore}/100</td>
+            <td className="p-2">{route.quality==='route_api'?
+              'SeaRoutes geometry':'Screening only'}</td>
+            <td className="p-2"><button type="button"
+              onClick={()=>setSelected(route.id)}
+              className="font-medium text-sage-700 underline">{tx('Details','تفاصيل')}</button></td>
+          </tr>)}</tbody>
+        </table>
+      </div>
+      {chosen&&<div className="rounded-lg border border-line-accent bg-cream-100/20 p-4">
+        <h3 className="flex items-center gap-2 text-[13px] font-semibold text-content">
+          <Globe2 className="h-4 w-4 text-sage-700"/>
+          {chosen.from} → {chosen.to}
+          {chosen.via?' · '+chosen.via:''}
+        </h3>
+        <p className="mt-1 text-[11px] text-content-soft">
+          {chosen.timeBasis} · {chosen.distanceType.replaceAll('_',' ')}
+        </p>
+        <p className="mt-2 text-[12px] text-content">
+          {tx('If quoted, freight for this shipment:','تكلفة النقل إن وجد عرض سعر:')}
+          {' '}{chosen.freightTotalQar===null?'N/A':
+            format(chosen.freightTotalQar,2)+' QAR'}
+        </p>
+        <p className="mt-1 text-[11px] text-content-soft">
+          {tx('Includes only the entered carrier rate. Excludes duties, inland drayage, cold storage, demurrage, insurance and spoilage.',
+            'يشمل سعر الناقل المدخل فقط، لا الرسوم أو التأمين أو التخزين أو التلف.')}
+        </p>
+        <ul className="mt-3 space-y-1">
+          {chosen.riskDrivers.map(message=><li key={message}
+            className="flex gap-2 text-[11px] text-content-soft">
+            <ShieldAlert className="mt-0.5 h-3.5 w-3.5 shrink-0 text-warning-strong"/>
+            {message}
+          </li>)}
+        </ul>
+        <p className="mt-2 text-[11px] font-medium text-content">
+          {chosen.reeferRequired?tx('Cold-chain controls required','يتطلب تبريداً'):
+            tx('Ambient transport possible subject to SKU','يمكن النقل الجاف حسب المنتج')}
+          {' · '}{chosen.storageNote}
+        </p>
+        {chosen.sourceUrl&&<a href={chosen.sourceUrl} rel="noopener noreferrer"
+          target="_blank" className="mt-2 inline-flex items-center gap-1 text-[11px] text-sage-700 underline">
+          {tx('Routing data provider','مصدر بيانات المسار')}<ExternalLink className="h-3 w-3"/>
+        </a>}
+      </div>}
+      <div className="rounded-md border border-warning-line bg-warning-soft p-3 text-[11px] text-content">
+        <p className="flex items-center gap-2 font-semibold">
+          <ShieldAlert className="h-4 w-4 text-warning-strong"/>
+          {tx('Planning analysis, not a freight booking','تحليل تخطيطي وليس حجز شحن')}
+        </p>
+        <p className="mt-1">{data.pricesDisclaimer} {data.scheduleDisclaimer}</p>
+        <p className="mt-1">{data.riskDisclaimer}</p>
+        <p className="mt-2 text-content-soft">
+          {tx('Source availability: ','توفر المصادر: ')}
+          SeaRoutes {data.sourceStatus.searoutes} · World Bank LPI {data.sourceStatus.worldBank} ·
+          Marine forecast {data.sourceStatus.marineWeather}
+        </p>
+        <div className="mt-2 flex flex-wrap gap-3">
+          {Object.values(data.sources).filter((v):v is string=>Boolean(v)).map(url=>
+            <a href={url} target="_blank" rel="noopener noreferrer" key={url}
+              className="inline-flex items-center gap-1 text-sage-700 underline">
+              {new URL(url).hostname}<ExternalLink className="h-3 w-3"/>
+            </a>)}
+        </div>
+      </div>
+    </div>}
+  </section>
+}
