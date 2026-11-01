@@ -39,7 +39,8 @@ export function parseGdacsRegionalEvents(raw:unknown,country:string):RegionalHaz
     const d=Math.min(originDist,qatDist)
     if(d>400)continue
     const type=str(p.eventtype??p.eventType) || 'GDACS event'
-    const id=str(p.eventid??p.eventId??item.id)
+    const rawId=p.eventid??p.eventId??item.id
+    const id=typeof rawId==='number'&&Number.isSafeInteger(rawId)?String(rawId):str(rawId)
     const key=type+':'+id+':'+closest
     if(seen.has(key))continue
     seen.add(key)
