@@ -178,7 +178,7 @@ export function ProcurementRecordPanel(props:Props){
         </p>}
       </div>}
       {pendingApproval&&<button type="button"
-        onClick={()=>onOpenApproval(pendingApproval)}
+        onClick={()=>onOpen('approvals',pendingApproval.id)}
         className="flex w-full items-center justify-between rounded-lg border border-line-accent bg-cream-100/25 p-3 font-medium text-sage-700">
         <span className="flex items-center gap-2"><ClipboardCheck className="h-4 w-4"/>
           {tx('View pending independent approval','عرض الموافقة المستقلة المعلقة')}</span>
