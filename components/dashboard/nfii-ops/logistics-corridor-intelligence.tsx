@@ -1,6 +1,6 @@
 'use client'
 
-import {useEffect,useRef,useState,type FormEvent} from 'react'
+import {useEffect,useMemo,useRef,useState,type FormEvent} from 'react'
 import dynamic from 'next/dynamic'
 import {BarChart3,ExternalLink,Globe2,Loader2,
   Route as RouteIcon,ShieldAlert} from 'lucide-react'
@@ -8,6 +8,7 @@ import {COMMODITY_CATALOG} from '@/lib/platform/commodity-catalog'
 import {CARGO_SPECS,getExportHub} from '@/lib/nfii/logistics-lanes'
 import type {ScreenedRoute} from '@/lib/nfii/logistics-screening'
 import type {RouteMapOverlay} from '@/lib/nfii/logistics-route-map'
+import {previewRouteMapOverlays} from '@/lib/nfii/logistics-route-map'
 import type {OperationsSnapshot} from '@/lib/nfii/operations-types'
 import type {SupplierOriginReport,SupplierOriginScope,SupplierOrigin} from '@/lib/nfii/logistics-supplier-origins'
 import {useI18n} from '@/lib/i18n'
@@ -64,6 +65,7 @@ export function LogisticsCorridorIntelligence({
   const [error,setError]=useState('')
   const [busy,setBusy]=useState(false)
   const [selected,setSelected]=useState<string|null>(null)
+  const [previewSelected,setPreviewSelected]=useState<string|null>('sea_direct')
   const current=useRef<AbortController|null>(null)
   const [orderId,setOrderId]=useState('')
   const orders:ShipmentChoice[]=(isPreview?[]:operations.purchaseOrders)
@@ -148,6 +150,7 @@ export function LogisticsCorridorIntelligence({
         reason.message:'Unknown provider error')
     }finally{if(!controller.signal.aborted)setBusy(false)}
   }
+  const displayedMapRoutes=useMemo(()=>data?.mapRoutes??previewRouteMapOverlays(country),[data,country])
   const chosen=data?.routes.find(r=>r.id===selected)
   const maxRisk=Math.max(...(data?.routes.map(r=>r.riskScore)??[]),100)
   const maxTime=Math.max(...(data?.routes.map(r=>r.estimatedDays??0)??[]),1)
@@ -288,25 +291,25 @@ export function LogisticsCorridorIntelligence({
       {tx('Choose a product, country and quantity, then compare transport options. No costs or routes are prefilled as real.',
         'حدد المنتج والبلد والكمية، ثم قارن وسائل النقل.')}
     </p>}
-    {data&&<div className="space-y-4">
-      <div className="rounded-lg border border-line bg-card p-3 md:p-4">
-        <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
-          <div>
-            <h3 className="text-[15px] font-semibold text-content">
-              {tx('Interactive import route map · origin to Qatar','خريطة تفاعلية لمسارات الاستيراد إلى قطر')}
-            </h3>
-            <p className="text-[11px] text-content-soft">
-              {tx('Select a line or a route below. Solid sea paths are API geometry; dashed paths only illustrate candidate connections.',
-                'اختر خطاً على الخريطة. الخطوط المتقطعة توضيحية وليست مسارات مؤكدة.')}
-            </p>
+    <div className="rounded-lg border border-line bg-card p-3 md:p-4">
+            <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
+              <div>
+                <h3 className="text-[15px] font-semibold text-content">
+                  {tx('Interactive import route map · origin to Qatar','خريطة تفاعلية لمسارات الاستيراد إلى قطر')}
+                </h3>
+                <p className="text-[11px] text-content-soft">
+                  {tx('Select a line or a route below. Solid sea paths are API geometry; dashed paths only illustrate candidate connections.',
+                    'اختر خطاً على الخريطة. الخطوط المتقطعة توضيحية وليست مسارات مؤكدة.')}
+                </p>
+              </div>
+              <span className="rounded-full border border-line px-2.5 py-1 text-[10px] text-content-soft">
+                {displayedMapRoutes.filter(r=>r.fidelity==='provider_geometry').length} {tx('routed geometries','مسارات فعلية هندسياً')}
+              </span>
+            </div>
+            <LogisticsRouteMap routes={displayedMapRoutes} selectedId={data?selected:previewSelected}
+              onSelect={id=>data?setSelected(id):setPreviewSelected(id)} locale={ar?'ar':'en'}/>
           </div>
-          <span className="rounded-full border border-line px-2.5 py-1 text-[10px] text-content-soft">
-            {data.mapRoutes.filter(r=>r.fidelity==='provider_geometry').length} {tx('routed geometries','مسارات فعلية هندسياً')}
-          </span>
-        </div>
-        <LogisticsRouteMap routes={data.mapRoutes} selectedId={selected}
-          onSelect={id=>setSelected(id)} locale={ar?'ar':'en'}/>
-      </div>
+    {data&&<div className="space-y-4">
       {data.freightBenchmark.estimate&&<div className="rounded-lg border border-line-accent bg-cream-100/20 p-3">
         <div className="flex flex-wrap items-center justify-between gap-2">
           <h3 className="text-[13px] font-semibold text-content">
