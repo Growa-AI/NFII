@@ -13,7 +13,7 @@ export type FeasibleCropCountry={
   historicalUnitValueQarKg:number|null
   importTonnes:number|null
   year:number|null
-  feasibility:'observed_import_route'|'documented_company_only'
+  feasibility:'observed_import_route'|'documented_company_only'|'local_supplier_research'
 }
 
 type OriginResponse={
@@ -65,7 +65,9 @@ export function OriginPriceIntelligence({
       if(body.commodity!==commodity)throw Error('Unexpected crop price response')
       if(controller.signal.aborted)return
       setData(body)
-      onCountriesLoaded(body.shortlist)
+      onCountriesLoaded(body.localQatar.documentedLeads>0?
+        [...body.shortlist,{...body.localQatar,observedQatarImports:false,
+          importTonnes:null,year:null}]:body.shortlist)
     }).catch(reason=>{
       if(!controller.signal.aborted){
         setError(reason instanceof Error?reason.message:'Provider unavailable')
