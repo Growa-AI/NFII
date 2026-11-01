@@ -11,11 +11,12 @@ export type CorridorEvidence='carrier_route_geometry'|'geographic_proxy'
 export type RateInput={sea:number|null;air:number|null;road:number|null}
 export type RouteInputs={commodity:string;country:string;tonnes:number;limitDays:number;rates:RateInput;
   seaDistances:Record<string,{km:number;durationDays:number|null;routeUrl:string}>|null;
-  lpi:number|null;lpiYear:number|null;waves:number|null;weatherAgeHours:number|null}
+  lpi:number|null;lpiYear:number|null;waves:number|null;weatherAgeHours:number|null;
+  roadDistanceKm?:number|null;roadDriveHours?:number|null}
 export type ScreenedRoute={
   id:string;country:string;commodity:string;mode:Mode;via:string|null;
   from:string;to:string;originCode:string;destinationCode:string;
-  distanceKm:number;distanceType:'observed_sea_route'|'straight_line_lower_bound'|'geometric_estimate';
+  distanceKm:number;distanceType:'observed_sea_route'|'observed_road_drive_geometry'|'straight_line_lower_bound'|'geometric_estimate';
   estimatedDays:number|null;timeBasis:string;feasibleBeforeDeadline:boolean|null;
   reeferRequired:boolean;storageNote:string;
   rateQarPerTonne:number|null;freightTotalQar:number|null;freightQarKg:number|null;
@@ -47,8 +48,10 @@ export function buildScreenedRoutes(inputs:RouteInputs):ScreenedRoute[]{
     const rawKm=route.geometry.reduce((sum,p,i)=>
       i?sum+km(route.geometry[i-1],p):0,0)
     // Sea fallback: do not dress a direct geodesic as a navigable sea route.
+    const realRoad=route.mode==='road'&&inputs.roadDistanceKm!==null&&
+      inputs.roadDistanceKm!==undefined&&Number.isFinite(inputs.roadDistanceKm)
     const distance=route.mode==='sea'&&routeKm!==undefined?routeKm:
-      route.mode==='road'?rawKm*1.4:rawKm
+      realRoad?inputs.roadDistanceKm!:route.mode==='road'?rawKm*1.4:rawKm
     const documentedDistance=route.mode==='sea'&&routeKm!==undefined
     // Single air and road paths are only coarse screening scenarios.
     const days=route.mode==='sea'?
@@ -69,7 +72,10 @@ export function buildScreenedRoutes(inputs:RouteInputs):ScreenedRoute[]{
       score+=12;riskDrivers.push('Unverified connection or transshipment and handling')
     }
     if(route.mode==='road'){
-      score+=14;riskDrivers.push('Road distance is geometric; no verified border clearance/route')
+      score+=realRoad?8:14
+      riskDrivers.push(realRoad?
+        'Road geometry from Google car routing; commercial trucking/border clearance unverified':
+        'Road distance is geometric; no verified border clearance/route')
     }
     if(spec.coldChain){
       score+=12;riskDrivers.push('Requires documented temperature and shelf-life handling')
@@ -107,11 +113,13 @@ export function buildScreenedRoutes(inputs:RouteInputs):ScreenedRoute[]{
       originCode:route.originCode,destinationCode:route.destinationCode,
       distanceKm:round(distance,0),
       distanceType:documentedDistance?'observed_sea_route':
+        realRoad?'observed_road_drive_geometry':
         route.mode==='road'?'geometric_estimate':'straight_line_lower_bound',
       estimatedDays:days,
       timeBasis:documentedDistance?
         (observed!.durationDays!==null?'SeaRoutes published route duration':'No published schedule/duration'):
         route.mode==='sea'?'No sea transit ETA; straight-line lower-bound only':
+        realRoad?'Google road distance; commercial trucking and border times remain assumptions':
         'Planning estimate from geometric distance, nominal movement and handling; no schedules',
       feasibleBeforeDeadline:days!==null?days<=inputs.limitDays:null,
       reeferRequired:spec.coldChain,storageNote:spec.temperature,
@@ -121,9 +129,10 @@ export function buildScreenedRoutes(inputs:RouteInputs):ScreenedRoute[]{
       costSource:safeRate===null?'no_rate':'user_supplied_rate',
       riskScore:bounded,riskBand:bounded>=67?'high':bounded>=40?'elevated':'lower',
       riskDrivers,riskMethod:'Transparent screening heuristic, not actuarial forecast',
-      quality:documentedDistance?'route_api':'model_only',
+      quality:documentedDistance||realRoad?'route_api':'model_only',
       evidence:documentedDistance?'carrier_route_geometry':'geographic_proxy',
-      sourceUrl:documentedDistance?observed!.routeUrl:null,
+      sourceUrl:documentedDistance?observed!.routeUrl:realRoad?
+        'https://developers.google.com/maps/documentation/routes/compute_route_directions':null,
       requiresQuote:true,bookingConfirmed:false,
     }
   }
