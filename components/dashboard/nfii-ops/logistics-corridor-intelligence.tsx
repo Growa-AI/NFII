@@ -1,20 +1,28 @@
 'use client'
 
 import {useEffect,useRef,useState,type FormEvent} from 'react'
+import dynamic from 'next/dynamic'
 import {BarChart3,ExternalLink,Globe2,Loader2,
   Route as RouteIcon,ShieldAlert} from 'lucide-react'
 import {COMMODITY_CATALOG} from '@/lib/platform/commodity-catalog'
 import {CARGO_SPECS,getExportHub} from '@/lib/nfii/logistics-lanes'
 import type {ScreenedRoute} from '@/lib/nfii/logistics-screening'
+import type {RouteMapOverlay} from '@/lib/nfii/logistics-route-map'
 import type {OperationsSnapshot} from '@/lib/nfii/operations-types'
 import type {SupplierOriginReport,SupplierOriginScope,SupplierOrigin} from '@/lib/nfii/logistics-supplier-origins'
 import {useI18n} from '@/lib/i18n'
+
+const LogisticsRouteMap=dynamic(
+  ()=>import('./logistics-route-map').then(module=>module.LogisticsRouteMap),
+  {ssr:false,loading:()=> <div className="h-[360px] animate-pulse rounded-lg bg-muted/30 md:h-[440px]"/>},
+)
 
 type ModelResponse={
   context:{commodity:string;country:string;countryName:string;tonnes:number;
     deliveryDeadlineDays:number;product:string;productClass:string;coldChain:boolean;
     handling:string;importDestination:string}
   routes:ScreenedRoute[]
+  mapRoutes:RouteMapOverlay[]
   sourceStatus:{searoutes:string;worldBank:string;marineWeather:string;googleRoad:string}
   sources:{searoutes:string|null;worldBank:string|null;marineWeather:string|null;googleRoad:string|null}
   dataWarnings:string[]
@@ -281,6 +289,24 @@ export function LogisticsCorridorIntelligence({
         'حدد المنتج والبلد والكمية، ثم قارن وسائل النقل.')}
     </p>}
     {data&&<div className="space-y-4">
+      <div className="rounded-lg border border-line bg-card p-3 md:p-4">
+        <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
+          <div>
+            <h3 className="text-[15px] font-semibold text-content">
+              {tx('Interactive import route map · origin to Qatar','خريطة تفاعلية لمسارات الاستيراد إلى قطر')}
+            </h3>
+            <p className="text-[11px] text-content-soft">
+              {tx('Select a line or a route below. Solid sea paths are API geometry; dashed paths only illustrate candidate connections.',
+                'اختر خطاً على الخريطة. الخطوط المتقطعة توضيحية وليست مسارات مؤكدة.')}
+            </p>
+          </div>
+          <span className="rounded-full border border-line px-2.5 py-1 text-[10px] text-content-soft">
+            {data.mapRoutes.filter(r=>r.fidelity==='provider_geometry').length} {tx('routed geometries','مسارات فعلية هندسياً')}
+          </span>
+        </div>
+        <LogisticsRouteMap routes={data.mapRoutes} selectedId={selected}
+          onSelect={id=>setSelected(id)} locale={ar?'ar':'en'}/>
+      </div>
       {data.freightBenchmark.estimate&&<div className="rounded-lg border border-line-accent bg-cream-100/20 p-3">
         <div className="flex flex-wrap items-center justify-between gap-2">
           <h3 className="text-[13px] font-semibold text-content">
