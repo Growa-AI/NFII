@@ -11,6 +11,8 @@ import {
   ZERO_FOOD_SCENARIO, type FoodScenarioAdjustments,
 } from '@/lib/food-security/scenario'
 import { AGENT_REGISTRY } from '@/lib/ai/agents/registry'
+import { CommodityAgentVerdict } from '@/components/dashboard/commodity-agent-verdict'
+import { buildAgentFinalRecommendation } from '@/lib/nfii/agent-decision'
 import type { OperationsSnapshot } from '@/lib/nfii/operations-types'
 import {
   simulateCommodityAgents, type AgentStep,
@@ -69,10 +71,13 @@ export function CommodityAgentLab({
   const result=useMemo(()=>balance?simulateCommodityAgents({
     commodityId:balance.commodityId,balance,operations,today,shocks,
   }):null,[balance,operations,today,shocks])
+  const recommendation=useMemo(
+    ()=>result?buildAgentFinalRecommendation(result):null,[result],
+  )
 
   useEffect(()=>{
     setRevealed(0);setPlaying(false);setDecision(null)
-  },[balance?.commodityId,balance?.sourceMode,balance?.fromDate])
+  },[balance?.commodityId,balance?.sourceMode,balance?.fromDate,balance?.toDate,balance?.status])
 
   useEffect(()=>{
     if(!playing||!result)return
@@ -190,6 +195,14 @@ export function CommodityAgentLab({
         </div>
       </div>
 
+      {recommendation && result && (
+        <CommodityAgentVerdict
+          recommendation={recommendation}
+          workflowComplete={revealed >= result.steps.length}
+          humanChoice={decision}
+        />
+      )}
+
       {!result?(
         <div className="rounded-lg border border-warning-line bg-warning-soft p-4 text-[12px] text-content">
           {tx('Select a food balance source to run this simulation. No fabricated baseline is used in Live mode.',
@@ -254,19 +267,13 @@ export function CommodityAgentLab({
             <div className="rounded-xl border border-line bg-card p-4">
               <h3 className="flex items-center gap-2 text-[14px] font-medium text-content">
                 <ClipboardCheck className="h-4 w-4 text-sage-700"/>
-                {tx('Draft decisions','مسودات القرارات')}
+                {tx('Supporting agent proposals','مقترحات الوكلاء الداعمة')}
               </h3>
               <p className="mt-1 text-[11px] text-content-soft">
-                {tx('Recommendations shown only after the agents finish. Every item needs independent human review.',
-                  'تظهر الاقتراحات بعد اكتمال الوكلاء وتتطلب مراجعة بشرية مستقلة.')}
+                {tx('Additional follow-up recommendations. The main conclusion appears in Final Agent Recommendation above. None is executed.',
+                  'توصيات متابعة إضافية. تظهر الخلاصة الرئيسية في التوصية النهائية أعلاه. لم يُنفذ أي إجراء.')}
               </p>
-              {revealed<result.steps.length?(
-                <p className="mt-4 rounded-lg bg-muted p-3 text-[12px] text-content-soft">
-                  {tx('Run or expand the workflow to inspect proposed decisions.',
-                    'شغّل التسلسل أو اعرضه كاملاً لرؤية القرارات المقترحة.')}
-                </p>
-              ):(
-                <ul className="mt-3 space-y-2">
+              <ul className="mt-3 space-y-2">
                   {result.proposals.map(proposal=>(
                     <li key={proposal.id} className="rounded-lg border border-line bg-background p-3">
                       <div className="flex flex-wrap items-center justify-between gap-2">
@@ -281,7 +288,6 @@ export function CommodityAgentLab({
                     </li>
                   ))}
                 </ul>
-              )}
             </div>
 
             <div className="rounded-xl border border-line bg-card p-4">

@@ -113,3 +113,46 @@ integration remain independent future engineering work.
 - GitHub CI validates ESLint, Vitest, TypeScript and Next.js build.
 - Real-browser visual and Supabase-backed staging acceptance tests remain
   necessary before a production rollout.
+
+
+## Final agent recommendation, always visible
+
+The operating simulator now computes **one consolidated outcome** per commodity,
+horizon and shock configuration through \`lib/nfii/agent-decision.ts\`.
+\`CommodityAgentVerdict\` displays that outcome **above** the detailed agent
+activity log, immediately after input selection. Users do not need to play all
+ten specialist stages to find the main conclusion.
+
+The executive summary explicitly separates:
+
+- **Action to evaluate**: evidence collection, investigation of a scenario
+  deficit, accelerated replenishment review, monitored replenishment timing,
+  or continued monitoring without an additional purchase recommendation.
+- **Why**: risk and quantified period-level scenario assumptions.
+- **Quantity to investigate**: the modeled deficit (metric tonnes), **never
+  represented as an approved order quantity**.
+- **Next operational step** and **reviewer accountable** for authorization.
+- **Alternatives to verify**, not automatically selected suppliers.
+- **Secondary issues** such as delayed shipments and reviews outstanding.
+- **Human authorization and execution**: permanently disclose that there is
+  **no real approval, procurement order, logistics dispatch, or reserve
+  release**. The browser's approve/reject rehearsal changes only local UI
+  state and cannot perform an operational action.
+- **Data source**: illustrative Qatar values versus organization-scoped
+  reviewed balance, clearly marked.
+
+Concrete example using existing Qatar seed assumptions for a 30-day tomato
+scenario with a 40% production reduction, 65% import shortfall, 20% increased
+demand and 10% opening-stock loss: the simulation reports a **53.2 t modeled
+shortage to investigate**. This is not a purchase recommendation of exactly
+53.2 tonnes and does not account for day-level stockouts, supplier capacity or
+pricing. The proposed response is to verify available supplier contracts,
+shipment ETAs and usable lots, then submit evidence for independent review.
+
+For **incomplete real source data**, the verdict becomes **blocked / request
+evidence** with no manufactured shortage quantity. For sufficient modelled
+coverage, the result is **continue monitoring**, not automatically purchase
+or certify food security. These distinctions are enforced in unit tests.
+
+This is a transparent, deterministic recommendation engine that **simulates**
+specialist coordination; it is not a real multi-agent LLM execution service.
