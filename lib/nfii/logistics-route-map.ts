@@ -21,13 +21,13 @@ export function makeRouteMapOverlays(
 ):RouteMapOverlay[]{
   const hub=getExportHub(country)
   if(!hub)return []
-  return routes.map(route=>{
+  return routes.map((route):RouteMapOverlay=>{
     const origin=route.mode==='air'?pt(hub.air):pt(hub.sea)
     const destination=route.mode==='air'?pt(QATAR_AIR):
       route.mode==='road'?pt(QATAR_ROAD):pt(QATAR_PORT)
     const via=route.id==='sea_jebel_ali'?jebel:
       route.id==='sea_salalah'?salalah:route.id==='air_dubai'?dubai:null
-    const published=route.mode==='sea'&&observed?.[route.id]?.geometry
+    const published=route.mode==='sea'?observed?.[route.id]?.geometry:null
     const paths=published?.length?splitAtDateline(published):
       splitAtDateline([[origin,...(via?[via]:[]),destination]])
     return {
