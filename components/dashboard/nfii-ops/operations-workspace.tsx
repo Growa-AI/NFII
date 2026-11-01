@@ -13,6 +13,10 @@ import { useI18n } from '@/lib/i18n'
 import { COMMODITY_CATALOG } from '@/lib/platform/commodity-catalog'
 import { PageHeader } from '@/components/brand/layout'
 import { GlobalSupplierResearch } from '@/components/dashboard/nfii-ops/global-supplier-research'
+import {
+  ProcurementHome, ProcurementJourney, ProcurementStageHeading,
+  procurementTabCollection, procurementTabKind, type ProcurementTab,
+} from '@/components/dashboard/nfii-ops/procurement-journey'
 import { supplierDraftCode, type SupplierCandidate } from '@/lib/nfii/procurement-global'
 import {
   OPERATION_FIELDS, type NfiiOperationKind, type OperationField,
@@ -57,9 +61,9 @@ const AREA: Record<OperationsArea, {
   collections:Collection[]; kinds:NfiiOperationKind[];
 }> = {
   procurement: {
-    en:'Procurement control',ar:'إدارة المشتريات',
-    subtitleEn:'Live global supplier research, sourcing markets, contracts and purchase approvals.',
-    subtitleAr:'الموردون والعقود المعتمدة والتزامات الشراء بموافقات مستقلة.',
+    en:'Procurement',ar:'المشتريات',
+    subtitleEn:'Find suppliers, qualify them, manage contracts and purchase orders in one guided workflow.',
+    subtitleAr:'ابحث عن موردين وأهّلهم وأدر العقود وأوامر الشراء ضمن مسار واضح.',
     collections:['suppliers','contracts','purchaseOrders','approvals'],
     kinds:['supplier','contract','purchase_order'],
   },
@@ -267,6 +271,10 @@ export function NfiiOperationsWorkspace({focus}:{focus:OperationsArea}){
   const [notice,setNotice]=useState('')
   const [truncated,setTruncated]=useState<string[]>([])
   const [forcePreview,setForcePreview]=useState(false)
+  const [preferLive,setPreferLive]=useState(false)
+  const [procurementTab,setProcurementTab]=useState<ProcurementTab>('overview')
+  const [recordSearch,setRecordSearch]=useState('')
+  const [recordStatus,setRecordStatus]=useState('all')
 
   useEffect(()=>{
     setSnapshot(null)
@@ -306,7 +314,10 @@ export function NfiiOperationsWorkspace({focus}:{focus:OperationsArea}){
   const illustrative=useMemo(()=>previewOperationsSnapshot(today),[today])
   const liveHasRecords=snapshot!==null && Object.values(snapshot).some(rows=>rows.length>0)
   // No SQL installation is needed to explore the pre-existing illustrative fixture.
-  const isPreview=forcePreview || (!orgLoading && !loading && (!orgId || !liveHasRecords))
+  // An authorized organization with zero records must still be able to
+  // enter Live mode and create its first supplier.
+  const isPreview=forcePreview || (!orgLoading && !loading &&
+    (!orgId || snapshot===null || (!liveHasRecords && !preferLive)))
   const s=isPreview?illustrative:(snapshot??EMPTY_OPERATIONS)
   const canEdit=!isPreview && (ctx?.hasPermission('supply.edit')??false)
   const canPropose=!isPreview && (ctx?.hasPermission('decisions.propose')??false)
@@ -314,11 +325,47 @@ export function NfiiOperationsWorkspace({focus}:{focus:OperationsArea}){
   const canExecute=!isPreview && (ctx?.hasPermission('decisions.execute')??false)
   const canCreate=formKind==='release'?canPropose:canEdit
   const reserves=useMemo(()=>reservePosition(s,today),[s,today])
+  const approvedSuppliers=s.suppliers.filter(row=>row.status==='approved')
+  const approvedCurrentContracts=s.contracts.filter(row=>
+    row.status==='approved'&&String(row.valid_from)<=today&&String(row.valid_to)>=today)
+  const missingProcurementParent=focus==='procurement'&&(
+    (formKind==='contract'&&approvedSuppliers.length===0) ||
+    (formKind==='purchase_order'&&approvedCurrentContracts.length===0)
+  )
+
+  function selectProcurementTab(tab:ProcurementTab){
+    setProcurementTab(tab)
+    const collection=procurementTabCollection(tab)
+    const kind=procurementTabKind(tab)
+    if(collection)setActiveView(collection)
+    if(kind)setFormKind(kind)
+    setRecordSearch('')
+    setRecordStatus('all')
+    setFormOpen(false)
+    setFormValues({})
+    setPendingAction(null)
+    setNotice('')
+  }
+
+  const visibleRows=focus==='procurement'
+    ?s[activeView].filter(row=>{
+        const term=recordSearch.trim().toLowerCase()
+        if(recordStatus!=='all' && String(row.status)!==recordStatus)return false
+        if(!term)return true
+        const supplier=row.supplier_id
+          ?s.suppliers.find(x=>x.id===row.supplier_id)?.name??''
+          :''
+        return [
+          getLabel(row),row.country_code,row.commodity_code,row.contract_ref,
+          row.order_ref,row.target_type,supplier,row.status,
+        ].some(value=>String(value??'').toLowerCase().includes(term))
+      })
+    :s[activeView]
 
   function prepareSupplier(candidate:SupplierCandidate){
     if(!orgId||isPreview||!canEdit||candidate.source!=='GLEIF'||
       !candidate.countryCode||candidate.name.length>200)return
-    setActiveView('suppliers')
+    selectProcurementTab('suppliers')
     setFormKind('supplier')
     setFormValues({
       code:supplierDraftCode(candidate),
@@ -388,6 +435,10 @@ export function NfiiOperationsWorkspace({focus}:{focus:OperationsArea}){
       setFormValues({})
       setFormOpen(false)
       setActiveView(COLLECTION[formKind])
+      if(focus==='procurement')setProcurementTab(
+        formKind==='supplier'?'suppliers':
+        formKind==='contract'?'contracts':'orders'
+      )
       setReload(v=>v+1)
     }catch(err){
       setError(err instanceof Error?err.message:'Creation failed')
@@ -508,8 +559,11 @@ export function NfiiOperationsWorkspace({focus}:{focus:OperationsArea}){
               {isPreview
                 ? tx('Reference data from the existing NFII example. Not verified contracts, shipments or reserves. View-only, no SQL required.',
                     'بيانات توضيحية موجودة في NFII وليست عقوداً أو شحنات أو احتياطيات موثقة. للعرض فقط دون SQL.')
-                : tx('Data loaded from your organization in Supabase.',
-                    'البيانات محملة من مؤسستك في Supabase.')}
+                : liveHasRecords
+                  ?tx('Data loaded from your organization in Supabase.',
+                      'البيانات محملة من مؤسستك في Supabase.')
+                  :tx('Live register is empty. Start by registering your first supplier.',
+                      'السجل الفعلي فارغ. ابدأ بتسجيل أول مورد.')}
             </p>
             {isPreview && error && (
               <p className="mt-1 text-[11px] text-warning-strong">
@@ -519,12 +573,19 @@ export function NfiiOperationsWorkspace({focus}:{focus:OperationsArea}){
           </div>
           <div className="flex flex-wrap gap-2">
             <button type="button" className="nfii-button nfii-button-secondary"
-              aria-pressed={isPreview} onClick={()=>setForcePreview(true)}>
+              aria-pressed={isPreview} onClick={()=>{
+                setForcePreview(true)
+                setPreferLive(false)
+                setFormOpen(false)
+              }}>
               {tx('Example data', 'بيانات توضيحية')}
             </button>
             <button type="button" className="nfii-button nfii-button-secondary"
-              disabled={!orgId || !liveHasRecords}
-              aria-pressed={!isPreview} onClick={()=>setForcePreview(false)}>
+              disabled={!orgId || snapshot===null}
+              aria-pressed={!isPreview} onClick={()=>{
+                setForcePreview(false)
+                setPreferLive(true)
+              }}>
               {tx('Live data', 'بيانات فعلية')}
             </button>
           </div>
@@ -543,7 +604,15 @@ export function NfiiOperationsWorkspace({focus}:{focus:OperationsArea}){
         {truncated.join(', ')}
       </div>}
 
-      {focus==='procurement'&&(
+      {focus==='procurement' && !orgLoading && !loading && (
+        <ProcurementJourney
+          tab={procurementTab}
+          onTabChange={selectProcurementTab}
+          snapshot={s}
+        />
+      )}
+
+      {focus==='procurement'&&procurementTab==='discover'&&(
         <GlobalSupplierResearch
           organizationId={orgId}
           canCreateSupplier={Boolean(orgId)&&!isPreview&&canEdit}
@@ -556,16 +625,25 @@ export function NfiiOperationsWorkspace({focus}:{focus:OperationsArea}){
         <div className="nfii-panel p-10 text-[13px] text-content-soft" role="status">
           {tx('Loading organization operations…','جارٍ تحميل عمليات المؤسسة…')}
         </div>
-      ):(
+      ):focus==='procurement' && procurementTab==='overview'?(
+        <ProcurementHome
+          snapshot={s}
+          isPreview={isPreview}
+          canEdit={canEdit}
+          onNavigate={selectProcurementTab}
+        />
+      ):focus==='procurement' && procurementTab==='discover'?null:(
         <>
-          <div className="grid grid-cols-2 gap-2 lg:grid-cols-4">
+          {focus!=='procurement' && <div className="grid grid-cols-2 gap-2 lg:grid-cols-4">
             {kpis.map(card=><div className="nfii-kpi" key={card.title}>
               <p className="nfii-label">{card.title}</p>
               <p className="mt-2 text-[24px] font-medium tabular-nums text-content">
                 {card.value} {card.unit&&<span className="text-[11px] font-normal text-content-soft">{card.unit}</span>}
               </p>
             </div>)}
-          </div>
+          </div>}
+
+          {focus==='procurement' && <ProcurementStageHeading tab={procurementTab}/>}
 
           <div className="grid gap-4 xl:grid-cols-[minmax(0,1.6fr)_minmax(320px,0.8fr)]">
             <section className="nfii-panel min-w-0 overflow-hidden">
@@ -586,7 +664,7 @@ export function NfiiOperationsWorkspace({focus}:{focus:OperationsArea}){
                 </button>
               </div>
 
-              <div className="flex flex-wrap gap-1.5 border-b border-line p-3">
+              {focus!=='procurement'&&<div className="flex flex-wrap gap-1.5 border-b border-line p-3">
                 {conf.collections.map(key=>(
                   <button key={key} type="button"
                     onClick={()=>setActiveView(key)}
@@ -601,13 +679,42 @@ export function NfiiOperationsWorkspace({focus}:{focus:OperationsArea}){
                     </span>
                   </button>
                 ))}
-              </div>
+              </div>}
 
-              {s[activeView].length===0?(
+              {focus==='procurement'&&(
+                <div className="flex flex-wrap items-center gap-2 border-b border-line bg-muted/20 px-4 py-3">
+                  <label className="min-w-[170px] flex-1">
+                    <span className="sr-only">{tx('Search current records','بحث في السجلات الحالية')}</span>
+                    <input type="search" value={recordSearch}
+                      onChange={event=>setRecordSearch(event.target.value)}
+                      className="nfii-input" maxLength={100}
+                      placeholder={tx('Search this register…','ابحث في هذا السجل…')}/>
+                  </label>
+                  <label>
+                    <span className="sr-only">{tx('Filter by status','تصفية حسب الحالة')}</span>
+                    <select className="nfii-input" value={recordStatus}
+                      onChange={event=>setRecordStatus(event.target.value)}>
+                      <option value="all">{tx('All statuses','كل الحالات')}</option>
+                      {['pending','approved','rejected'].map(status=>(
+                        <option key={status} value={status}>{status}</option>
+                      ))}
+                    </select>
+                  </label>
+                  <span className="text-[11px] tabular-nums text-content-soft">
+                    {visibleRows.length} / {s[activeView].length}
+                  </span>
+                </div>
+              )}
+
+              {visibleRows.length===0?(
                 <div className="p-4">
                   <div className="nfii-empty">
-                    {isPreview?tx('No example records in this section.', 'لا توجد سجلات توضيحية في هذا القسم.'):tx('No verified or submitted records in this register. Start by creating the first record with appropriate evidence.',
-                      'لا توجد سجلات في هذا السجل. ابدأ بإنشاء أول سجل مع الأدلة المناسبة.')}
+                    {s[activeView].length>0
+                      ?tx('No records match the selected filters.','لا توجد سجلات تطابق عوامل التصفية.')
+                      :isPreview
+                        ?tx('No example records in this section.','لا توجد سجلات توضيحية في هذا القسم.')
+                        :tx('No records yet. Use the form on the right to create the first one.',
+                            'لا توجد سجلات بعد. استخدم النموذج لإنشاء أول سجل.')}
                   </div>
                 </div>
               ):(
@@ -619,7 +726,7 @@ export function NfiiOperationsWorkspace({focus}:{focus:OperationsArea}){
                       <th>{tx('Action','الإجراء')}</th>
                     </tr></thead>
                     <tbody>
-                      {s[activeView].map(row=>(
+                      {visibleRows.map(row=>(
                         <tr key={row.id}>
                           <td>
                             <div className="flex items-center gap-2">
@@ -653,34 +760,74 @@ export function NfiiOperationsWorkspace({focus}:{focus:OperationsArea}){
             </section>
 
             <aside className="min-w-0 space-y-4">
+              {(focus!=='procurement'||procurementTab!=='approvals')&&
               <section id="nfii-create-record" className="nfii-panel overflow-hidden">
                 <div className="flex items-center justify-between border-b border-line px-4 py-3">
                   <h2 className="flex items-center gap-2 text-[13px] font-semibold">
                     <Plus className="h-3.5 w-3.5 text-content-accent"/>
-                    {tx('New operational record','سجل تشغيلي جديد')}
+                    {focus==='procurement'
+                      ?formKind==='supplier'
+                        ?tx('Register supplier','تسجيل مورد')
+                        :formKind==='contract'
+                          ?tx('Create supplier contract','إنشاء عقد مورد')
+                          :tx('Create purchase order','إنشاء أمر شراء')
+                      :tx('New operational record','سجل تشغيلي جديد')}
                   </h2>
                   <button type="button" className="nfii-button nfii-button-secondary"
-                    disabled={isPreview}
+                    disabled={isPreview||!canCreate||missingProcurementParent}
                     onClick={()=>setFormOpen(v=>!v)}
                     aria-expanded={formOpen}>
-                    {formOpen?tx('Close','إغلاق'):tx('Open form','فتح النموذج')}
+                    {formOpen?tx('Close','إغلاق'):
+                      focus==='procurement'?tx('Create new','إنشاء جديد'):
+                        tx('Open form','فتح النموذج')}
                   </button>
                 </div>
                 <div className="p-4">
                   <p className="mb-3 text-[11px] leading-relaxed text-content-soft">
                     {isPreview?tx('This example is read-only. Switch to live records to create or approve operations.',
                       'هذه البيانات للعرض فقط. انتقل إلى السجلات الفعلية لإنشاء أو اعتماد العمليات.'):focus==='procurement'
-                      ?tx('Create suppliers first, then contracts, then purchase orders. Each step requires approval.',
-                        'أنشئ الموردين أولاً ثم العقود وأوامر الشراء؛ كل خطوة تتطلب الموافقة.')
+                      ?formKind==='supplier'
+                        ?tx('Check the legal name and country. Supplier approval must be independent.',
+                            'تحقق من الاسم القانوني والدولة. يجب أن تكون الموافقة مستقلة.')
+                        :formKind==='contract'
+                          ?tx('Select an approved supplier and define commodity, quantity, price per tonne and dates.',
+                              'اختر المورد المعتمد وحدد السلعة والكمية والسعر للطن والتواريخ.')
+                          :tx('Select an approved contract and specify the purchase order quantity.',
+                              'اختر عقداً معتمداً وحدد كمية أمر الشراء.')
+
                       :focus==='logistics'
                         ?tx('Shipments must reference an approved purchase order. Dispatch and delivery require documentation.',
                           'يجب أن ترتبط الشحنات بأمر شراء معتمد، وأن يوثق الإرسال والاستلام.')
                         :tx('Approve warehouses, register received lots against delivered shipments, then request reserve releases.',
                           'اعتمد المستودعات وسجل الدفعات من الشحنات المستلمة ثم اطلب صرف المخزون.')}
                   </p>
+                  {focus==='procurement'&&missingProcurementParent&&(
+                    <div className="mb-3 rounded-lg border border-warning-line bg-warning-soft p-3 text-[11px] leading-relaxed text-content">
+                      <p className="font-medium">
+                        {formKind==='contract'
+                          ?tx('An approved supplier is required before creating a contract.',
+                              'يلزم مورد معتمد قبل إنشاء عقد.')
+                          :tx('An approved, currently valid contract is required before creating an order.',
+                              'يلزم عقد ساري ومعتمد قبل إنشاء أمر شراء.')}
+                      </p>
+                      <button type="button"
+                        onClick={()=>selectProcurementTab(formKind==='contract'?'suppliers':'contracts')}
+                        className="mt-2 inline-flex items-center gap-1 font-medium text-sage-700 underline">
+                        {formKind==='contract'?tx('View suppliers','عرض الموردين'):
+                          tx('View contracts','عرض العقود')}
+                        <ArrowUpRight className="h-3 w-3"/>
+                      </button>
+                    </div>
+                  )}
+                  {focus==='procurement'&&!isPreview&&!canCreate&&(
+                    <p className="mb-3 text-[11px] text-warning-strong">
+                      {tx('Your account does not have permission to create records in this organization.',
+                        'حسابك لا يملك صلاحية إنشاء سجلات في هذه المؤسسة.')}
+                    </p>
+                  )}
                   {formOpen&&!isPreview&&(
                     <form className="space-y-3" onSubmit={e=>void submitCreate(e)}>
-                      <label className="block space-y-1">
+                      {focus!=='procurement' && <label className="block space-y-1">
                         <span className="nfii-label">{tx('Record type','نوع السجل')}</span>
                         <select className="nfii-input" value={formKind}
                           onChange={e=>{
@@ -691,7 +838,7 @@ export function NfiiOperationsWorkspace({focus}:{focus:OperationsArea}){
                             {tx(...COLLECTION_LABEL[COLLECTION[kind]])}
                           </option>)}
                         </select>
-                      </label>
+                      </label>}
                       {OPERATION_FIELDS[formKind].map(field=>(
                         <label key={field.key} className="block space-y-1.5">
                           <span className="nfii-label">{tx(field.en,field.ar)}</span>
@@ -709,8 +856,9 @@ export function NfiiOperationsWorkspace({focus}:{focus:OperationsArea}){
                     </form>
                   )}
                 </div>
-              </section>
+              </section>}
 
+              {(focus!=='procurement'||procurementTab==='approvals')&&
               <section className="nfii-panel p-4">
                 <h3 className="flex items-center gap-2 text-[12px] font-semibold">
                   <ClipboardCheck className="h-4 w-4 text-content-accent"/>
@@ -746,9 +894,9 @@ export function NfiiOperationsWorkspace({focus}:{focus:OperationsArea}){
                     {tx('No pending approval requests.','لا توجد طلبات موافقة معلقة.')}
                   </p>}
                 </div>
-              </section>
+              </section>}
 
-              <section className="nfii-panel p-4">
+              {focus!=='procurement'&&<section className="nfii-panel p-4">
                 <h3 className="text-[12px] font-semibold">{tx('Data integrity','سلامة البيانات')}</h3>
                 <p className="mt-2 text-[11px] leading-relaxed text-content-soft">
                   {tx(
@@ -756,11 +904,11 @@ export function NfiiOperationsWorkspace({focus}:{focus:OperationsArea}){
                     'يُتتبع المخزون التشغيلي بمعزل عن ميزان الغذاء المُراجع. لا ينفذ هذا البرنامج شراءً أو دفعاً مصرفياً أو أمراً لشركة شحن أو معدات مستودع.'
                   )}
                 </p>
-              </section>
+              </section>}
             </aside>
           </div>
 
-          <section className="nfii-panel overflow-hidden">
+          {focus!=='procurement'&&<section className="nfii-panel overflow-hidden">
             <div className="flex flex-wrap items-center justify-between gap-2 border-b border-line px-4 py-3">
               <h2 className="flex items-center gap-2 text-[12px] font-semibold">
                 <FileCheck2 className="h-4 w-4 text-content-accent"/>
@@ -779,7 +927,7 @@ export function NfiiOperationsWorkspace({focus}:{focus:OperationsArea}){
                 {tx('No operational events recorded yet.','لم تُسجل أحداث تشغيلية بعد.')}
               </p>}
             </div>
-          </section>
+          </section>}
         </>
       )}
 

@@ -128,3 +128,42 @@ ISO 3→2 partner normalization, duplicate partners, missing and truncated data,
 unsafe URLs, fixed host/parameter policy, and strict supplier qualification.
 Static regressions verify the existing scoped, audited supplier workflow and
 the absence of direct Supabase mutations by the global discovery route.
+
+
+## Guided Procurement experience
+
+**Procurement now starts on Overview**, not with every registry, global search,
+approval inbox, creation form and audit ledger visible simultaneously. There
+are six focused tabs:
+
+| Tab | Purpose | What appears |
+|---|---|---|
+| Overview | Understand the approved purchase workflow | Four key indicators, 5-stage journey, recommended next step |
+| Find suppliers | Research sourcing opportunities | GLEIF, Google Places (optional), UN Comtrade, candidate shortlist |
+| Suppliers | Qualify and register legal counterparties | Supplier-only register, status/search filters and the supplier form |
+| Contracts | Negotiate and record agreed supply | Contract-only register and terms form; requires approved supplier |
+| Orders | Raise controlled purchase commitments | Purchase-order register and order form; requires approved valid contract |
+| Approvals | Independent second-person review | Relevant supplier/contract/order approval queue and review actions |
+
+The **existing API authorization, immutable audit and independent review
+system remain unchanged**. No migrations and no new permissions were added.
+The internal audit event panel remains available on Logistics/Reserves but is
+not shown all over the Procurement workspace.
+
+**First live record fix:** The original UI automatically opened an illustrative
+Qatar dataset when the live organization had no rows, which left users unable
+to create their first supplier. The new Live data toggle is enabled when the
+authorized organization ledger has loaded successfully, **including when it
+is empty**. Explicitly switching to Live permits the first supplier creation
+if the user has \`supply.edit\`. The Example view remains strictly read-only.
+
+When users prepare a GLEIF supplier draft from the Find suppliers screen,
+the workflow switches to the Supplier tab, opens the existing registration
+form with prefilled legal identity, and requires an explicit submission.
+Contracts and Orders show a clear prerequisite explanation and link to the
+previous tab if no approved parent record is eligible; creation remains
+disabled until the prerequisite is met.
+
+Every stage offers its own local search and status filter. Audit logs and
+unrelated modules do not crowd the current task. Headings and guidance are
+available in English and Arabic, retaining the Growa palette and components.
