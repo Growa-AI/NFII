@@ -298,19 +298,21 @@ export function LogisticsCorridorIntelligence({
                   {tx('Interactive import route map · origin to Qatar','خريطة تفاعلية لمسارات الاستيراد إلى قطر')}
                 </h3>
                 <p className="text-[11px] text-content-soft">
-                  {tx('Maritime tracks use SeaRoutes when available, otherwise a computed ocean-network route. No carrier schedules are implied.',
-                    'تُعرض مسارات SeaRoutes أو مسارات بحرية محسوبة، دون اعتبارها حجوزات مؤكدة.')}
+                  {tx('Sea routes follow SeaRoutes or the modeled ocean network. Dashed air routes show only the geographic great-circle reference, not an airline flight path or schedule.',
+                    'المسارات البحرية من مزود أو شبكة محيطية محسوبة؛ والمسار الجوي المتقطع مرجع جغرافي فقط، وليس رحلة أو جدولاً مؤكداً.')}
                 </p>
               </div>
               <span className="rounded-full border border-line px-2.5 py-1 text-[10px] text-content-soft">
-                {displayedMapRoutes.filter(r=>r.paths.length>0).length} {tx('calculated maritime routes','مسارات بحرية محسوبة')}
+                {displayedMapRoutes.filter(r=>r.mode==='sea'&&r.paths.length>0).length} {tx('sea paths','مسارات بحرية')}
+                {' · '}
+                {displayedMapRoutes.filter(r=>r.mode==='air'&&r.paths.length>0).length} {tx('air references','مراجع جوية')}
               </span>
             </div>
             <LogisticsRouteMap routes={displayedMapRoutes} selectedId={data?selected:previewSelected}
               onSelect={id=>data?setSelected(id):setPreviewSelected(id)} locale={ar?'ar':'en'}/>
           </div>
     {data&&<div className="space-y-4">
-      {data.mapRoutes.every(route=>route.paths.length===0)&&
+      {data.mapRoutes.filter(route=>route.mode==='sea').every(route=>route.paths.length===0)&&
         <p role="status" className="rounded-lg border border-warning-line bg-warning-soft p-3 text-[12px] text-content">
           {tx('No maritime geometry was calculated for this port pair. This is a routing-data limitation, not proof that sea transport is impossible.',
             'لم يتم حساب مسار بحري لهذه الموانئ؛ هذا لا يعني أن الشحن غير ممكن.')}

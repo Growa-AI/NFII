@@ -1,5 +1,5 @@
 import {describe,expect,it} from 'vitest'
-import {readSeaRouteGeometry,splitAtDateline,matchesRequestedSeaPorts} from './logistics-route-geometry'
+import {readSeaRouteGeometry,splitAtDateline,matchesRequestedSeaPorts,makeAirGreatCircle} from './logistics-route-geometry'
 import {makeRouteMapOverlays,previewRouteMapOverlays} from './logistics-route-map'
 import {buildScreenedRoutes} from './logistics-screening'
 import {readFileSync} from 'node:fs'
@@ -47,6 +47,8 @@ describe('Interactive food import routes on a real map',()=>{
     })
     expect(routed.find(x=>x.id==='sea_direct')?.fidelity).toBe('provider_geometry')
     expect(routed.find(x=>x.id==='air_direct')?.fidelity).toBe('illustrative')
+    expect(routed.find(x=>x.id==='air_direct')?.paths[0].length).toBeGreaterThan(16)
+    expect(routed.find(x=>x.id==='air_direct')?.source).toContain('not a verified flight path')
     expect(routed.some(x=>x.id==='sea_salalah')).toBe(false)
     expect(routed.find(x=>x.id==='sea_direct')?.paths[0][0]).toEqual([18.95,72.95])
     expect(routed.every(x=>x.destination[0]>24)).toBe(true)
@@ -55,10 +57,26 @@ describe('Interactive food import routes on a real map',()=>{
     const preliminary=previewRouteMapOverlays('IN')
     expect(preliminary.some(x=>x.id==='sea_direct')).toBe(true)
     expect(preliminary.some(x=>x.id==='air_direct')).toBe(true)
-    expect(preliminary.every(x=>x.fidelity==='illustrative'&&x.paths.length===0)).toBe(true)
+    expect(preliminary.every(x=>x.fidelity==='illustrative')).toBe(true)
+    expect(preliminary.find(x=>x.id==='sea_direct')?.paths).toEqual([])
+    expect(preliminary.find(x=>x.id==='air_direct')?.paths[0].length).toBeGreaterThan(16)
     expect(preliminary.some(x=>x.id==='air_dubai')).toBe(false)
     expect(preliminary.some(x=>x.id==='sea_salalah')).toBe(false)
     expect(previewRouteMapOverlays('XX')).toEqual([])
+  })
+  it('draws an interpolated great circle, never a straight planar air segment',()=>{
+    const origin:[number,number]=[40.6413,-73.7781]
+    const destination:[number,number]=[25.2731,51.608]
+    const lines=makeAirGreatCircle(origin,destination)
+    const points=lines.flat()
+    expect(points.length).toBeGreaterThan(40)
+    expect(points[0]).toEqual(origin)
+    expect(points[points.length-1]).toEqual(destination)
+    expect(points.every(([lat,lon])=>Number.isFinite(lat)&&Number.isFinite(lon)&&
+      Math.abs(lat)<=90&&Math.abs(lon)<=180)).toBe(true)
+    expect(Math.max(...points.map(p=>p[0]))).toBeGreaterThan(40.7)
+    expect(lines.every(line=>line.every((p,i)=>i===0||
+      Math.abs(p[1]-line[i-1][1])<=180))).toBe(true)
   })
   it('rejects sea geometry that does not join the actual endpoints or declared hub',()=>{
     const src:[number,number]=[18.95,72.95]

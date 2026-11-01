@@ -1,5 +1,5 @@
 import {getExportHub,QATAR_AIR,QATAR_PORT,QATAR_ROAD,type GeoPoint} from './logistics-lanes'
-import {splitAtDateline,type GeoLine,type GeoPointTuple} from './logistics-route-geometry'
+import {makeAirGreatCircle,splitAtDateline,type GeoLine,type GeoPointTuple} from './logistics-route-geometry'
 import type {ScreenedRoute,RouteInputs} from './logistics-screening'
 
 export type RouteMapOverlay={
@@ -23,16 +23,21 @@ export function makeRouteMapOverlays(
     const destination=route.mode==='air'?pt(QATAR_AIR):
       route.mode==='road'?pt(QATAR_ROAD):pt(QATAR_PORT)
     const published=route.mode==='sea'?observed?.[route.id]?.geometry:null
-    const paths=published?.length?splitAtDateline(published):[]
+    // No flight-track provider is connected. An air geodesic is a visible
+    // planning reference only, never a verified airway or carrier itinerary.
+    const paths=route.mode==='air'?makeAirGreatCircle(origin,destination):
+      published?.length?splitAtDateline(published):[]
     return {
       id:route.id,mode:route.mode,
       paths,
-      fidelity:published?.length?(observed?.[route.id]?.calculationSource==='local_ocean_network'?
-        'modeled_geometry':'provider_geometry'):'illustrative',
+      fidelity:route.mode==='air'?'illustrative':
+        published?.length?(observed?.[route.id]?.calculationSource==='local_ocean_network'?
+          'modeled_geometry':'provider_geometry'):'illustrative',
       from:route.from,to:route.to,via:route.via,
       origin,destination,
-      source:published?.length?(observed?.[route.id]?.calculationSource==='local_ocean_network'?
-        'Ocean-grid estimate':'SeaRoutes'):null,
+      source:route.mode==='air'?'Great-circle reference; not a verified flight path':
+        published?.length?(observed?.[route.id]?.calculationSource==='local_ocean_network'?
+          'Ocean-grid estimate':'SeaRoutes'):null,
     }
   })
 }
@@ -55,7 +60,7 @@ export function previewRouteMapOverlays(country:string):RouteMapOverlay[]{
     from:row.mode==='air'?hub.airport:hub.port,
     to:row.mode==='air'?QATAR_AIR.name:
       row.mode==='road'?QATAR_ROAD.name:QATAR_PORT.name,
-    paths:[],
+    paths:row.mode==='air'?makeAirGreatCircle(row.origin,row.end):[],
     via:row.via?'Candidate transfer hub':null,
     fidelity:'illustrative' as const,source:null,
   }))

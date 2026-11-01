@@ -148,14 +148,21 @@ journeys such as 2.8/3.8 days. Those numbers came from fixed additive
 penalties and assumed handling time. **They have been removed**.
 Without a carrier schedule/ETA, air/road transit times are now **N/A**.
 
-The map draws **only SeaRoutes navigable GeoJSON** that has been validated
-against the origin, Hamad Port and, for hub options, the named transfer point.
-If the provider is absent or a geometry fails validation, only the origin
-and destination markers are shown. Neither straight lines over land nor
-fabricated connections via Jebel Ali, Salalah or Dubai are drawn. Maritime
-hub alternatives are not listed without a valid matching geometry.
-The shortest sea path is a theoretical navigable route, **not evidence
+The map draws **maritime navigable geometry** from SeaRoutes where it passes
+endpoint and transfer-hub validation, or an explicitly modeled ocean-network
+alternative where available. If no maritime geometry exists, only sea markers
+are shown. Maritime hub alternatives are not listed without validated provider
+geometry. The shortest sea path is a theoretical navigable route, **not evidence
 that a liner operates a direct commercial service**.
+
+The **air mode** is always shown separately as a **yellow dashed sampled
+great-circle reference** between the representative origin airport and DOH.
+This is a spherical geodetic path, not a straight longitude/latitude chord.
+It is explicitly **illustrative**, not verified airways, an airline's actual
+flight path, available cargo service, booked itinerary or live aircraft tracking.
+No flight ETA is inferred. Air references are shown in preview as well as
+after screening, while the absence of maritime geometry is still signaled
+independently.
 
 The old risk **0–100 heuristic** has been retired. Risk context now presents
 **GDACS official orange/red alerts** within a 400 km search radius of

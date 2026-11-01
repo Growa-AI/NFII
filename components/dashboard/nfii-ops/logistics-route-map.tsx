@@ -68,12 +68,14 @@ export function LogisticsRouteMap({routes,selectedId,onSelect,locale}:Props){
         const line=L.polyline(points,{
           color:colors[route.mode],
           weight:selected?5:3,
-          opacity:selected?1:0.55,
-          dashArray:route.fidelity==='illustrative'?'7 9':undefined,
+          opacity:selected?1:route.mode==='air'?0.8:0.55,
+          dashArray:route.mode==='air'?'8 9':
+            route.fidelity==='illustrative'?'7 9':undefined,
         }).addTo(layers)
         line.bindTooltip((route.from+' → '+route.to+
           (route.via?' · '+route.via:'')+
-          (route.fidelity==='modeled_geometry'?' · computed ocean-grid estimate':
+          (route.mode==='air'?' · great-circle reference; NOT a verified flight track':
+          route.fidelity==='modeled_geometry'?' · computed ocean-grid estimate':
           route.fidelity==='provider_geometry'?' · source API geometry':' · unverified')))
         line.on('click',()=>handler.current(route.id))
       }
@@ -113,7 +115,7 @@ export function LogisticsRouteMap({routes,selectedId,onSelect,locale}:Props){
         {locale==='ar'?'بحري':'Sea'}
       </span>
       <span className="inline-flex items-center gap-2">
-        <span className="h-0 w-7 border-t-[3px] border-[#C9A227]"/>
+        <span className="h-0 w-7 border-t-[3px] border-dashed border-[#C9A227]"/>
         {locale==='ar'?'جوي':'Air'}
       </span>
       <span className="inline-flex items-center gap-2">
@@ -122,11 +124,11 @@ export function LogisticsRouteMap({routes,selectedId,onSelect,locale}:Props){
       </span>
       <span className="inline-flex items-center gap-2">
         <span className="h-0 w-7 border-t-[3px] border-dashed border-content-soft"/>
-        {locale==='ar'?'لا تُعرض المسارات غير الموثقة':'No line without a verified geometry'}
+        {locale==='ar'?'جوي متقطع: أقصر مسار جغرافي، وليس رحلة مؤكدة':'Dashed air: great-circle reference, NOT a verified flight track'}
       </span>
       <span className="inline-flex items-center gap-2">
         <span className="h-0 w-7 border-t-[3px] border-solid border-content-soft"/>
-        {locale==='ar'?'مسار بحري موثق هندسياً':'Solid: verified maritime routing geometry'}
+        {locale==='ar'?'بحري متصل: هندسة من مزود أو شبكة محيطية محسوبة':'Solid sea: provider geometry or modeled ocean network'}
       </span>
     </div>
   </div>

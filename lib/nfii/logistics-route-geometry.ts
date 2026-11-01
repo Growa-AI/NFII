@@ -51,6 +51,41 @@ export function splitAtDateline(lines:GeoLine):GeoLine{
 }
 
 /**
+ * Geographic shortest-path reference for an air leg, sampled on a sphere.
+ * This is NOT an airline service, airway, flight plan, observed track or ETA.
+ * It must remain illustrative in both the API and map legend.
+ */
+export function makeAirGreatCircle(
+  origin:GeoPointTuple,destination:GeoPointTuple,
+):GeoLine{
+  const rad=Math.PI/180
+  const vector=(p:GeoPointTuple):[number,number,number]=>{
+    const lat=p[0]*rad,lon=p[1]*rad
+    return [Math.cos(lat)*Math.cos(lon),Math.cos(lat)*Math.sin(lon),Math.sin(lat)]
+  }
+  const a=vector(origin),b=vector(destination)
+  const dot=Math.max(-1,Math.min(1,a[0]*b[0]+a[1]*b[1]+a[2]*b[2]))
+  const angle=Math.acos(dot),sinAngle=Math.sin(angle)
+  // The antipodal case has no uniquely defined shortest great circle.
+  if(angle<1e-8||Math.abs(sinAngle)<1e-8)return []
+  const segments=Math.min(128,Math.max(24,Math.ceil(angle*6371/150)))
+  const points:GeoPointTuple[]=[]
+  for(let i=0;i<=segments;i++){
+    if(i===0){points.push(origin);continue}
+    if(i===segments){points.push(destination);continue}
+    const t=i/segments
+    const first=Math.sin((1-t)*angle)/sinAngle
+    const second=Math.sin(t*angle)/sinAngle
+    const x=first*a[0]+second*b[0]
+    const y=first*a[1]+second*b[1]
+    const z=first*a[2]+second*b[2]
+    points.push([Math.atan2(z,Math.hypot(x,y))/rad,Math.atan2(y,x)/rad])
+  }
+  // Split at the antimeridian instead of drawing an incorrect world-spanning line.
+  return splitAtDateline([points])
+}
+
+/**
  * Ensure a returned maritime geometry actually joins the requested port
  * references. Also require optional via-point passage for named transfers.
  * This rejects unrelated GeoJSON features and ignored via-hub parameters.
