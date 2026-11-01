@@ -10,7 +10,7 @@ export type CropSourceEvidenceType =
   'independent_commodity_listing'|'historical_crop_marketer'| 
   'farm_own_crop_claim'|'government_or_institutional_crop_profile'|
   'agritourism_crop_listing'|'farm_product_catalogue'|'manufacturer_product_listing'|
-  'trader_product_catalogue'|'historical_farm_crop_report'|'community_mapped_crop_tag'|'keyword_business_listing'
+  'trader_product_catalogue'|'historical_farm_crop_report'|'community_mapped_crop_tag'|'keyword_business_listing'|'mapped_agricultural_business'
 
 export interface ExtraCropListing {
   recordId:string
