@@ -296,13 +296,6 @@ export function simulateCommodityAgents(input:{
     findingAr:'عدد الإجراءات المقترحة '+proposals.length+'. جميعها تتطلب مراجعة بشرية وتبقى ضمن محاكاة المتصفح.',
     state:'review',evidence:proposals.map(p=>p.titleEn),
   })
-  add({
-    id:'human',agent:'orchestrator',areaEn:'Human authorization',areaAr:'التفويض البشري',
-    titleEn:'Hold for human decision',titleAr:'انتظار القرار البشري',
-    findingEn:'No agent can approve a contract, order a shipment, release reserves or alter the database from this simulation.',
-    findingAr:'لا يستطيع أي وكيل الموافقة على عقد أو شحنة أو صرف المخزون أو تعديل قاعدة البيانات من هذه المحاكاة.',
-    state:'review',evidence:['Approval gate: mandatory','Database write operations: none'],
-  })
   return {
     simulated:true,sourceMode:balance.sourceMode,commodityId,risk,scenario,links,
     steps,proposals,humanGate:'approval_required',

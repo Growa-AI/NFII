@@ -18,7 +18,8 @@ describe('Deterministic agent operating rehearsal',()=>{
     const result=run('rice')
     expect(result.steps).toHaveLength(10)
     expect(result.steps[0].agent).toBe('orchestrator')
-    expect(result.steps.at(-1)?.id).toBe('human')
+    expect(result.steps.at(-1)?.id).toBe('report')
+    expect(result.humanGate).toBe('approval_required')
     for(const step of result.steps){
       expect(AGENT_REGISTRY[step.agent]).toBeDefined()
       expect(step.findingEn.length).toBeGreaterThan(24)
