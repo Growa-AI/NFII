@@ -529,7 +529,8 @@ export function NfiiOperationsWorkspace({focus}:{focus:OperationsArea}){
     const choices:Array<{action:string;label:string}>=[]
     if(view==='approvals'&&row.status==='pending'&&canApprove&&
       user?.id!==row.submitted_by){
-      choices.push({action:'approve',label:tx('Approve','موافقة')})
+      if(approvalReadiness(s,row,today).ready)
+        choices.push({action:'approve',label:tx('Approve','موافقة')})
       choices.push({action:'reject',label:tx('Reject','رفض')})
     }
     if(view==='shipments'&&canExecute){
@@ -805,7 +806,13 @@ export function NfiiOperationsWorkspace({focus}:{focus:OperationsArea}){
                         <tr key={row.id}>
                           <td>
                             <div className="flex items-center gap-2">
-                              <strong className="font-medium text-content">{getLabel(row)}</strong>
+                              {focus==='procurement'&&['suppliers','contracts','purchaseOrders','approvals'].includes(activeView)?
+  <button type="button"
+    className="text-left font-medium text-sage-700 underline underline-offset-2 hover:text-content"
+    onClick={()=>openProcurementRecord(activeView as ProcurementRecordView,row.id)}>
+    {getLabel(row)}
+  </button>:
+  <strong className="font-medium text-content">{getLabel(row)}</strong>}
                               {activeView==='events'&&<span className="text-[10px] text-content-accent">
                                 {row.action}
                               </span>}
@@ -820,7 +827,12 @@ export function NfiiOperationsWorkspace({focus}:{focus:OperationsArea}){
                           <td><Status status={row.status??row.action}/></td>
                           <td>
                             <div className="flex max-w-[175px] flex-wrap gap-1.5">
-                              {actionsFor(activeView,row)}
+                              {focus==='procurement'&&['suppliers','contracts','purchaseOrders','approvals'].includes(activeView)&&
+  <button type="button" onClick={()=>openProcurementRecord(activeView as ProcurementRecordView,row.id)}
+    className="rounded-full border border-line-accent px-2.5 py-1 text-[10px] font-medium text-sage-700">
+    {tx('Details','تفاصيل')} <ArrowUpRight className="inline h-3 w-3"/>
+  </button>}
+{actionsFor(activeView,row)}
                               {activeView==='events'&&<span className="text-[10px] text-content-soft">
                                 {date(row.created_at)}
                               </span>}
