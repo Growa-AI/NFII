@@ -16,6 +16,7 @@ import { GlobalSupplierResearch } from '@/components/dashboard/nfii-ops/global-s
 import { CropProducerDiscovery } from '@/components/dashboard/nfii-ops/crop-producer-discovery'
 import { ProcurementRecordPanel } from '@/components/dashboard/nfii-ops/procurement-record-panel'
 import { LogisticsCorridorIntelligence } from '@/components/dashboard/nfii-ops/logistics-corridor-intelligence'
+import { StrategicReservesCommand } from '@/components/dashboard/nfii-ops/strategic-reserves-command'
 import {approvalReadiness,approvalTarget,contractPosition,
   procurementRecordLabel,type ProcurementRecordView} from '@/lib/nfii/procurement-workflow'
 import {
@@ -276,6 +277,7 @@ export function NfiiOperationsWorkspace({focus}:{focus:OperationsArea}){
   const [notice,setNotice]=useState('')
   const [truncated,setTruncated]=useState<string[]>([])
   const [procurementTab,setProcurementTab]=useState<ProcurementTab>('overview')
+  const [reserveView,setReserveView]=useState<'command'|'register'>('command')
   const [recordSearch,setRecordSearch]=useState('')
   const [recordStatus,setRecordStatus]=useState('all')
   const [selectedProcurementRecord,setSelectedProcurementRecord]=useState<{
@@ -640,6 +642,39 @@ export function NfiiOperationsWorkspace({focus}:{focus:OperationsArea}){
           isPreview={isPreview}
         />}
 
+      {focus==='reserves'&&!orgLoading&&!loading&&(
+        <div className="flex flex-wrap items-center gap-2 rounded-lg border border-line bg-card p-2"
+          aria-label={tx('Strategic reserves sections','أقسام الاحتياطي الاستراتيجي')}>
+          <button type="button" aria-pressed={reserveView==='command'}
+            className={'rounded-full border px-4 py-2 text-[12px] font-medium '+
+              (reserveView==='command'?'border-ink bg-ink text-white':
+                'border-line bg-card text-content hover:border-line-accent')}
+            onClick={()=>setReserveView('command')}>
+            {tx('Reserve command & agent','إدارة الاحتياطي والوكيل')}
+          </button>
+          <button type="button" aria-pressed={reserveView==='register'}
+            className={'rounded-full border px-4 py-2 text-[12px] font-medium '+
+              (reserveView==='register'?'border-ink bg-ink text-white':
+                'border-line bg-card text-content hover:border-line-accent')}
+            onClick={()=>setReserveView('register')}>
+            {tx('Operational register & approvals','السجل التشغيلي والموافقات')}
+          </button>
+        </div>
+      )}
+      {focus==='reserves'&&reserveView==='command'&&!orgLoading&&!loading&&
+        <StrategicReservesCommand
+          organizationId={orgId} snapshot={snapshot} today={today}
+          truncated={truncated} canEdit={canEdit}
+          onRefresh={()=>setReload(n=>n+1)}
+          onOpenRegister={view=>{
+            setReserveView('register')
+            setActiveView(view)
+            if(view==='warehouses')setFormKind('warehouse')
+            if(view==='lots')setFormKind('lot')
+            if(view==='releases')setFormKind('release')
+            setFormOpen(false)
+          }}
+        />}
       {focus==='procurement' && !orgLoading && !loading && (
         <ProcurementJourney
           tab={procurementTab}
@@ -695,9 +730,10 @@ export function NfiiOperationsWorkspace({focus}:{focus:OperationsArea}){
             setRecordStatus(status)
           }}
         />
-      ):focus==='procurement' && procurementTab==='discover'?null:(
+      ):focus==='procurement' && procurementTab==='discover'?null:
+        focus==='reserves'&&reserveView==='command'?null:(
         <>
-          {focus!=='procurement' && <div className="grid grid-cols-2 gap-2 lg:grid-cols-4">
+          {focus==='logistics' && <div className="grid grid-cols-2 gap-2 lg:grid-cols-4">
             {kpis.map(card=><div className="nfii-kpi" key={card.title}>
               <p className="nfii-label">{card.title}</p>
               <p className="mt-2 text-[24px] font-medium tabular-nums text-content">
@@ -729,7 +765,15 @@ export function NfiiOperationsWorkspace({focus}:{focus:OperationsArea}){
               {focus!=='procurement'&&<div className="flex flex-wrap gap-1.5 border-b border-line p-3">
                 {conf.collections.map(key=>(
                   <button key={key} type="button"
-                    onClick={()=>setActiveView(key)}
+                    onClick={()=>{
+                      setActiveView(key)
+                      if(focus==='reserves'){
+                        if(key==='warehouses')setFormKind('warehouse')
+                        if(key==='lots')setFormKind('lot')
+                        if(key==='releases')setFormKind('release')
+                      }
+                      setFormOpen(false)
+                    }}
                     aria-pressed={activeView===key}
                     className={'rounded-full border px-3 py-2 text-[11px] '+
                       (activeView===key
