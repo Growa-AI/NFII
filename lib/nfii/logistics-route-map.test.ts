@@ -62,7 +62,7 @@ describe('Interactive food import routes on a real map',()=>{
     expect(api).toContain('mapRoutes:makeRouteMapOverlays')
     expect(ui).toContain('<LogisticsRouteMap')
     expect(ui).toContain('previewRouteMapOverlays(country)')
-    expect(ui).toContain('onSelect={id=>setSelected(id)}')
+    expect(ui).toContain('onSelect={id=>data?setSelected(id):setPreviewSelected(id)}')
     expect(map).toContain("void import('leaflet')")
     expect(map).toContain('fitBounds')
     expect(map).toContain("route.fidelity==='illustrative'")
