@@ -126,12 +126,13 @@ export function ProcurementJourney({
 }
 
 export function ProcurementHome({
-  snapshot,isPreview,canEdit,onNavigate,
+  snapshot,isPreview,canEdit,onNavigate,onNavigateStatus,
 }:{
   snapshot:OperationsSnapshot
   isPreview:boolean
   canEdit:boolean
   onNavigate:(tab:ProcurementTab)=>void
+  onNavigateStatus?:(tab:ProcurementTab,status:string)=>void
 }){
   const {locale}=useI18n()
   const ar=locale==='ar'
@@ -182,20 +183,25 @@ export function ProcurementHome({
       <div className="mt-5 grid grid-cols-2 gap-2 lg:grid-cols-4">
         {[
           {en:'Approved suppliers',ar:'موردون معتمدون',
-            n:counts.approvedSuppliers},
+            n:counts.approvedSuppliers,target:'suppliers' as ProcurementTab,status:'approved'},
           {en:'Approved contracts',ar:'عقود معتمدة',
-            n:counts.approvedContracts},
+            n:counts.approvedContracts,target:'contracts' as ProcurementTab,status:'approved'},
           {en:'Approved orders',ar:'أوامر شراء معتمدة',
-            n:counts.approvedOrders},
+            n:counts.approvedOrders,target:'orders' as ProcurementTab,status:'approved'},
           {en:'Pending decisions',ar:'قرارات معلقة',
-            n:counts.pendingApprovals},
+            n:counts.pendingApprovals,target:'approvals' as ProcurementTab,status:'pending'},
         ].map(kpi=>(
-          <div key={kpi.en} className="rounded-lg border border-line bg-background p-3">
+          <button type="button" key={kpi.en}
+            onClick={()=>onNavigateStatus?onNavigateStatus(kpi.target,kpi.status):onNavigate(kpi.target)}
+            className="group rounded-lg border border-line bg-background p-3 text-left hover:border-line-accent hover:bg-cream-100/30">
             <p className="text-[11px] text-content-soft">{tx(kpi.en,kpi.ar)}</p>
             <p className="mt-2 text-[26px] font-medium tabular-nums text-content">
               {kpi.n}
             </p>
-          </div>
+            <span className="mt-2 inline-flex items-center gap-1 text-[10px] font-medium text-sage-700">
+              {tx('Open records','عرض السجلات')}<ArrowRight className="h-3 w-3"/>
+            </span>
+          </button>
         ))}
       </div>
     </section>
