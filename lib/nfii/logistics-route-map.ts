@@ -30,7 +30,8 @@ export function makeRouteMapOverlays(
       fidelity:published?.length?'provider_geometry':'illustrative',
       from:route.from,to:route.to,via:route.via,
       origin,destination,
-      source:published?.length?'SeaRoutes':null,
+      source:published?.length?(observed?.[route.id]?.calculationSource==='local_ocean_network'?
+        'Ocean-grid estimate':'SeaRoutes'):null,
     }
   })
 }
