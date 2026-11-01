@@ -6,6 +6,7 @@ import {validateLaneInput,CARGO_SPECS,getExportHub} from '@/lib/nfii/logistics-l
 import {collectLogisticsEvidence} from '@/lib/nfii/logistics-providers'
 import {buildScreenedRoutes,LOGISTICS_DATA_RULES,type RateInput} from '@/lib/nfii/logistics-screening'
 import {countryName} from '@/lib/nfii/world-countries'
+import {findLogisticsSupplierOrigins,hasSupplierInOrigin,type SupplierOriginScope} from '@/lib/nfii/logistics-supplier-origins'
 
 export const dynamic='force-dynamic'
 export const runtime='nodejs'
@@ -25,6 +26,11 @@ export async function GET(request:Request){
   const parsed=validateLaneInput(params)
   if(!parsed.ok)return reply({error:parsed.error},400)
   const org=(params.get('organizationId')??'').trim()
+  const supplierScope=params.get('supplierScope')??'documented'
+  if(supplierScope!=='documented'&&supplierScope!=='approved')
+    return reply({error:'Invalid supplier scope'},400)
+  if(supplierScope==='approved'&&!org)
+    return reply({error:'Organization is required for approved supplier sourcing'},400)
   if(org&&!validFoodUuid(org))return reply({error:'Invalid organization'},400)
   const rates:RateInput={
     sea:parseRate(params.get('seaRate'))??null,
@@ -42,6 +48,12 @@ export async function GET(request:Request){
     const gate=await requireCapability('supply.view',org)
     if(!gate.ok)return reply({error:gate.error},gate.status)
   }
+  const eligible=await findLogisticsSupplierOrigins(parsed.commodity,org||null)
+  if(supplierScope==='approved'&&eligible.sources.approvedLedger!=='available')
+    return reply({error:'Approved supplier register unavailable or incomplete'},503)
+  if(!hasSupplierInOrigin(eligible,supplierScope as SupplierOriginScope,parsed.country))
+    return reply({error:'This country has no matched suppliers for the selected crop and supplier scope.'},422)
+  const matching=eligible.countries.find(row=>row.countryCode===parsed.country)
   const evidence=await collectLogisticsEvidence(parsed.country)
   const screened=buildScreenedRoutes({
     ...parsed,rates,seaDistances:evidence.seaRoutes,
@@ -51,6 +63,8 @@ export async function GET(request:Request){
   const spec=CARGO_SPECS[parsed.commodity]
   const hub=getExportHub(parsed.country)
   return reply({
+    supplierSource:{scope:supplierScope,matchingCount:supplierScope==='approved'?
+      matching?.approvedCount??0:matching?.documentedCount??0},
     context:{
       commodity:parsed.commodity,country:parsed.country,
       countryName:countryName(parsed.country),
