@@ -39,7 +39,9 @@ describe('Source-labelled food logistics corridors',()=>{
     expect(sea.bookingConfirmed).toBe(false)
     expect(sea.requiresQuote).toBe(true)
     expect(routes.some(r=>r.id==='air_direct')).toBe(true)
-    expect(routes.some(r=>r.id==='air_dubai')).toBe(true)
+    expect(routes.some(r=>r.id==='air_dubai')).toBe(false)
+    expect(routes.every(r=>r.riskScore===null)).toBe(true)
+    expect(routes.every(r=>r.estimatedDays===null)).toBe(true)
     expect(routes.some(r=>r.id==='road_candidate')).toBe(false)
   })
   it('uses SeaRoutes geometry only when a valid observation exists',()=>{
@@ -51,9 +53,7 @@ describe('Source-labelled food logistics corridors',()=>{
     expect(direct.distanceKm).toBe(3000)
     expect(direct.estimatedDays).toBe(8)
     expect(direct.distanceType).toBe('observed_sea_route')
-    const other=routes.find(r=>r.id==='sea_salalah')!
-    expect(other.estimatedDays).toBeNull()
-    expect(other.quality).toBe('model_only')
+    expect(routes.some(r=>r.id==='sea_salalah')).toBe(false)
   })
   it('computes QAR/kg only from user-supplied rates, not invented benchmark prices',()=>{
     const routes=buildScreenedRoutes(input({tonnes:25,
@@ -67,7 +67,7 @@ describe('Source-labelled food logistics corridors',()=>{
   })
   it('includes Gulf road screening but rejects false worldwide land corridors',()=>{
     const gulf=buildScreenedRoutes(input({
-      country:'SA',commodity:'tomato',limitDays:7}))
+      country:'SA',commodity:'tomato',limitDays:7,roadDistanceKm:600}))
     expect(gulf.some(r=>r.mode==='road')).toBe(true)
     const distant=buildScreenedRoutes(input({country:'BR'}))
     expect(distant.some(r=>r.mode==='road')).toBe(false)
@@ -91,7 +91,7 @@ describe('Source-labelled food logistics corridors',()=>{
     expect(API).not.toContain('createAdminClient')
     expect(API).not.toMatch(/\.insert\(|\.update\(|\.upsert\(/)
     expect(UI).toContain('Compare transport options')
-    expect(UI).toContain('Screening risk · index, NOT probability')
+    expect(UI).toContain('Observed hazard signals · not a risk percentage')
     expect(UI).toContain('Quoted freight costs · QAR/kg')
     expect(WORKSPACE).toContain('<LogisticsCorridorIntelligence')
   })
