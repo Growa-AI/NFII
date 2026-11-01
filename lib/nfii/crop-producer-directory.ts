@@ -14,6 +14,7 @@
  */
 
 import {resolveCommodity} from '@/lib/platform/commodity-catalog'
+import {ADDITIONAL_CROP_LISTINGS, type CropSourceEvidenceType} from './crop-producer-associations'
 
 export const FAIRTSA_REGISTRY_URL='https://www.fairtsa.org/products'
 export const USDA_ORGANIC_REGISTRY_URL='https://organic.ams.usda.gov/integrity/'
@@ -29,10 +30,10 @@ export interface CropProducerEvidence {
   listedProducts:readonly string[]
   matchedProduct:string
   commodityId:string
-  sourceName:'FairTSA public certified-products listing'
-  sourceUrl:typeof FAIRTSA_REGISTRY_URL
-  registryCheckedOn:typeof FAIRTSA_EXCERPT_CHECKED
-  evidenceType:'product_listed_in_certification_directory'
+  sourceName:string
+  sourceUrl:string
+  registryCheckedOn:string
+  evidenceType:'product_listed_in_certification_directory'|CropSourceEvidenceType
   cropGrowerConfirmed:false
   currentCertificateConfirmed:false
   exportCapabilityConfirmed:false
@@ -84,10 +85,15 @@ const DIRECTORY:readonly {
     cropProducts:{milk:'Milk (also lists dairy, cheese and ghee)'}},
 ] as const
 
+/**
+ * Every result has an attributable publisher and crop/sector link. Evidence
+ * strength varies: membership/price listing is not a crop grower confirmation.
+ */
 export function cropProducerCoverage():Record<string,number>{
   const result:Record<string,number>={}
-  for(const commodity of ['tomato','cucumber','pepper','lettuce','date','barley','milk','rice','wheat'])
-    result[commodity]=DIRECTORY.filter(x=>Boolean(x.cropProducts[commodity as keyof typeof x.cropProducts])).length
+  for(const commodity of ['tomato','cucumber','pepper','lettuce','date','barley','milk','rice','wheat']){
+    result[commodity]=findDocumentedCropOrganizations(commodity).length
+  }
   return result
 }
 
@@ -98,30 +104,49 @@ export function findDocumentedCropOrganizations(
   if(!crop)return []
   const allowedCountry=country.trim().toUpperCase()
   if(allowedCountry&&!/^[A-Z]{2}$/.test(allowedCountry))return []
-  return DIRECTORY.flatMap(row=>{
+  const fairtsa:CropProducerEvidence[]=DIRECTORY.flatMap(row=>{
     if(allowedCountry&&row.country!==allowedCountry)return []
     const matched=row.cropProducts[crop.id as keyof typeof row.cropProducts]
     if(!matched)return []
     return [{
-      recordId:row.id,
-      organizationName:row.name,
-      countryCode:row.country,
-      countryName:row.countryName,
-      certifier:row.certifier,
-      listedProducts:[matched],
-      matchedProduct:matched,
-      commodityId:crop.id,
-      sourceName:'FairTSA public certified-products listing' as const,
+      recordId:row.id,organizationName:row.name,
+      countryCode:row.country,countryName:row.countryName,
+      certifier:row.certifier,listedProducts:[matched],
+      matchedProduct:matched,commodityId:crop.id,
+      sourceName:'FairTSA public certified-products listing',
       sourceUrl:FAIRTSA_REGISTRY_URL,
       registryCheckedOn:FAIRTSA_EXCERPT_CHECKED,
       evidenceType:'product_listed_in_certification_directory' as const,
-      cropGrowerConfirmed:false as const,
-      currentCertificateConfirmed:false as const,
-      exportCapabilityConfirmed:false as const,
-      capacityTonnes:null,
-      supplierApproved:false as const,
+      cropGrowerConfirmed:false as const,currentCertificateConfirmed:false as const,
+      exportCapabilityConfirmed:false as const,capacityTonnes:null,supplierApproved:false as const,
     }]
   })
+  const additional:CropProducerEvidence[]=ADDITIONAL_CROP_LISTINGS
+    .filter(row=>row.commodityId===crop.id&&
+      (!allowedCountry||row.countryCode===allowedCountry))
+    .map(row=>({
+      ...row,certifier:'Not established by source',listedProducts:[row.matchedProduct],
+      registryCheckedOn:FAIRTSA_EXCERPT_CHECKED,
+      cropGrowerConfirmed:false,currentCertificateConfirmed:false,
+      exportCapabilityConfirmed:false,capacityTonnes:null,supplierApproved:false,
+    }))
+  // Deduplicate across registries, retaining the source with the strongest
+  // explicit product evidence. Country is part of the identity key.
+  const priority=(r:CropProducerEvidence)=>
+    r.evidenceType==='product_listed_in_certification_directory'?4:
+    r.evidenceType==='company_product_document'?3:1
+  const normalized=(name:string)=>name.toLocaleLowerCase('en')
+    .normalize('NFKD').replace(/[^a-z0-9]/g,'')
+    .replace(/(?:private|limited|company|ltd|pvt|co)$/g,'')
+  const unique=new Map<string,CropProducerEvidence>()
+  for(const row of [...fairtsa,...additional]){
+    const key=row.countryCode+'|'+normalized(row.organizationName)
+    const existing=unique.get(key)
+    if(!existing||priority(row)>priority(existing))unique.set(key,row)
+  }
+  return [...unique.values()].sort((a,b)=>
+    a.countryName.localeCompare(b.countryName)||
+    a.organizationName.localeCompare(b.organizationName))
 }
 
 export function validateCropProducerSearch(params:URLSearchParams):
