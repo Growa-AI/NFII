@@ -59,7 +59,7 @@ export async function fetchSeaRoutes(country:string):Promise<Pick<ExternalLogist
   const records=resolved.filter((r):r is NonNullable<typeof r>=>Boolean(r))
   if(!records.length)return {seaRoutes:null,messages:['SeaRoutes returned no usable geometries; departure schedule and ETA unavailable.'],
     state:'unavailable',source:null}
-  const seaRoutes:Object=Object.fromEntries(records.map(r=>[r.id,{
+  const seaRoutes:Record<string,{km:number;durationDays:number|null;routeUrl:string}>=Object.fromEntries(records.map(r=>[r.id,{
     km:r.km,durationDays:r.durationDays,routeUrl:r.routeUrl}]))
   return {seaRoutes:seaRoutes as NonNullable<ExternalLogistics['seaRoutes']>,
     messages:records.length<desired.length?['Some sea corridor variants were unavailable.']:[],
