@@ -16,8 +16,9 @@ describe('Worldwide evidence-led crop discovery',()=>{
     for(const country of ['US','BR','CN','IN','ES','MA','EG','ZA','SA','AE','AU','NZ'])
       expect(isWorldCountryCode(country)).toBe(true)
     expect(isWorldCountryCode('XX')).toBe(false)
-    expect(ui).toContain('WORLD_COUNTRIES.map')
-    expect(ui).toContain('All countries (published directory only)')
+    expect(ui).toContain('feasibleCountries.map')
+    expect(ui).toContain('All documented countries')
+    expect(ui).not.toContain('WORLD_COUNTRIES.map')
   })
   it('builds safe, bounded Overpass queries with explicit ISO territory and crop',()=>{
     const q=overpassCropQuery('tomato','BR')
