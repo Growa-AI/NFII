@@ -45,7 +45,9 @@ describe('Guided procurement experience',()=>{
   })
   it('lets an authorized organization enter Live mode even when its ledger is empty',()=>{
     expect(workspace).toContain('const [preferLive,setPreferLive]=useState(false)')
-    expect(workspace).toContain('!liveHasRecords && !preferLive')
+    expect(workspace).toContain('const isPreview=!orgId||snapshot===null')
+    expect(workspace).not.toContain('previewOperationsSnapshot(today)')
+    expect(workspace).not.toContain('setForcePreview(true)')
     expect(workspace).toContain('disabled={!orgId || snapshot===null}')
     expect(workspace).not.toContain('disabled={!orgId || !liveHasRecords}')
     expect(workspace).toContain('setPreferLive(true)')
