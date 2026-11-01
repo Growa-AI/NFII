@@ -49,3 +49,29 @@ export function splitAtDateline(lines:GeoLine):GeoLine{
   }
   return result
 }
+
+/**
+ * Ensure a returned maritime geometry actually joins the requested port
+ * references. Also require optional via-point passage for named transfers.
+ * This rejects unrelated GeoJSON features and ignored via-hub parameters.
+ */
+export function matchesRequestedSeaPorts(
+  lines:GeoLine,origin:GeoPointTuple,destination:GeoPointTuple,
+  via?:GeoPointTuple,
+):boolean{
+  const flattened=lines.flat()
+  if(flattened.length<2)return false
+  const distance=(a:GeoPointTuple,b:GeoPointTuple)=>{
+    const rad=Math.PI/180
+    const la=(b[0]-a[0])*rad,lo=(b[1]-a[1])*rad
+    const d=Math.sin(la/2)**2+
+      Math.cos(a[0]*rad)*Math.cos(b[0]*rad)*Math.sin(lo/2)**2
+    return 12742*Math.asin(Math.min(1,Math.sqrt(d)))
+  }
+  const start=flattened[0],end=flattened[flattened.length-1]
+  const aligned=(distance(start,origin)<300&&distance(end,destination)<300)||
+    (distance(start,destination)<300&&distance(end,origin)<300)
+  if(!aligned)return false
+  if(via&&!flattened.some(point=>distance(point,via)<350))return false
+  return true
+}
