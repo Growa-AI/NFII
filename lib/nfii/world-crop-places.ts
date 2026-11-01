@@ -69,7 +69,10 @@ export async function searchGlobalCropBusinesses(commodity:string,country:string
     if(!response.ok)throw Error('Google Places HTTP '+response.status)
     const data=await response.text()
     if(data.length>600_000)throw Error('Google Places response too large')
-    const entries=parseGooglePlacesCandidates(JSON.parse(data) as unknown)
+    const payload=JSON.parse(data) as {places?:unknown}
+    const entries=parseGooglePlacesCandidates({
+      places:Array.isArray(payload.places)?payload.places:[],
+    })
     for(const item of entries){
       // regionCode only biases results: never show foreign or unknown country
       // businesses under the selected country.
