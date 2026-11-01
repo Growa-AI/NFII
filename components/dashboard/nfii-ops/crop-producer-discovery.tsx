@@ -211,7 +211,7 @@ export function CropProducerDiscovery({organizationId}:{organizationId:string|nu
         </div>
         <a href={data.sourceUrl} target="_blank" rel="noopener noreferrer"
           className="inline-flex items-center gap-1 text-[11px] font-medium text-sage-700 hover:underline">
-          {tx('View original directory','عرض الدليل الأصلي')}
+          {tx('FairTSA reference directory','دليل FairTSA المرجعي')}
           <ExternalLink className="h-3.5 w-3.5"/>
         </a>
       </div>
@@ -231,7 +231,7 @@ export function CropProducerDiscovery({organizationId}:{organizationId:string|nu
               </h3>
               <div className="mt-3 grid grid-cols-2 gap-x-3 gap-y-3 text-[12px]">
                 {[
-                  [tx('Product listed','المنتج المدرج'),record.matchedProduct],
+                  [tx('Crop / sector listed','المحصول / القطاع المدرج'),record.matchedProduct],
                   [tx('Country','الدولة'),record.countryName],
                   [tx('Evidence type','نوع الدليل'),record.evidenceType.replaceAll('_',' ')],
                   [tx('Directory ID','معرف الدليل'),record.recordId],
