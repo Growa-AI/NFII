@@ -1,11 +1,11 @@
 'use client'
 
 import {useEffect,useRef,useState,type FormEvent} from 'react'
-import {BarChart3,CheckCircle2,ExternalLink,Globe2,Loader2,
-  Route as RouteIcon,ShieldAlert,Ship,Plane,Truck} from 'lucide-react'
+import {BarChart3,ExternalLink,Globe2,Loader2,
+  Route as RouteIcon,ShieldAlert} from 'lucide-react'
 import {COMMODITY_CATALOG} from '@/lib/platform/commodity-catalog'
 import {HUB_COUNTRIES,CARGO_SPECS} from '@/lib/nfii/logistics-lanes'
-import type {ScreenedRoute,Mode} from '@/lib/nfii/logistics-screening'
+import type {ScreenedRoute} from '@/lib/nfii/logistics-screening'
 import type {OperationsSnapshot} from '@/lib/nfii/operations-types'
 import {useI18n} from '@/lib/i18n'
 
@@ -22,21 +22,15 @@ type ModelResponse={
 }
 const format=(n:number|null,dp=1)=>n===null?'N/A':
   n.toLocaleString('en-US',{minimumFractionDigits:dp,maximumFractionDigits:dp})
-const modes:Record<Mode,{en:string;ar:string;icon:typeof Ship}>={
-  sea:{en:'Sea',ar:'بحري',icon:Ship},
-  air:{en:'Air',ar:'جوي',icon:Plane},
-  road:{en:'Road',ar:'بري',icon:Truck},
-}
 const color=(band:string)=>band==='high'?'bg-critical':band==='elevated'?
   'bg-warning':'bg-sage-600'
 type ShipmentChoice={id:string;title:string;country:string;commodity:string;tonnes:number}
 
 export function LogisticsCorridorIntelligence({
-  organizationId,operations,isPreview,
+  organizationId,operations,
 }:{
   organizationId:string|null
   operations:OperationsSnapshot
-  isPreview:boolean
 }){
   const {locale}=useI18n()
   const ar=locale==='ar'
