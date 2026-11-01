@@ -15,6 +15,7 @@ import { PageHeader } from '@/components/brand/layout'
 import { GlobalSupplierResearch } from '@/components/dashboard/nfii-ops/global-supplier-research'
 import { CropProducerDiscovery } from '@/components/dashboard/nfii-ops/crop-producer-discovery'
 import { ProcurementRecordPanel } from '@/components/dashboard/nfii-ops/procurement-record-panel'
+import { LogisticsCorridorIntelligence } from '@/components/dashboard/nfii-ops/logistics-corridor-intelligence'
 import {approvalReadiness,approvalTarget,contractPosition,
   procurementRecordLabel,type ProcurementRecordView} from '@/lib/nfii/procurement-workflow'
 import {
@@ -652,6 +653,13 @@ export function NfiiOperationsWorkspace({focus}:{focus:OperationsArea}){
           'بعض القوائم محدودة بـ 150 سجلاً. هذه ليست الإجماليات الكاملة:')} {' '}
         {truncated.join(', ')}
       </div>}
+
+      {focus==='logistics'&&!orgLoading&&!loading&&
+        <LogisticsCorridorIntelligence
+          organizationId={orgId}
+          operations={s}
+          isPreview={isPreview}
+        />}
 
       {focus==='procurement' && !orgLoading && !loading && (
         <ProcurementJourney
