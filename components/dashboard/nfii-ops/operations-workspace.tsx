@@ -970,14 +970,19 @@ export function NfiiOperationsWorkspace({focus}:{focus:OperationsArea}){
                       key={row.id}>
                       <div className="min-w-0">
                         <p className="text-[11px] text-content">{row.target_type?.replaceAll('_',' ')}</p>
-                        <p className="text-[10px] text-content-soft">{row.id.slice(0,8)}</p>
+                        <button type="button"
+                          onClick={()=>focus==='procurement'?
+                            openProcurementRecord('approvals',row.id):setActiveView('approvals')}
+                          className="mt-1 text-left text-[11px] font-medium text-sage-700 underline">
+                          {approvalTarget(s,row)?procurementRecordLabel(approvalTarget(s,row)!.record):
+                            row.target_id?.slice(0,8)??row.id.slice(0,8)}
+                          <ArrowUpRight className="ms-1 inline h-3 w-3"/>
+                        </button>
                       </div>
                       {canApprove&&row.submitted_by!==user?.id
                         ?<button type="button" className="nfii-button nfii-button-secondary"
-                          onClick={()=>{
-                            setActiveView('approvals')
-                            openAction('approval',row,'approve')
-                          }}>
+                          onClick={()=>focus==='procurement'?
+                            openProcurementRecord('approvals',row.id):setActiveView('approvals')}>
                           {tx('Review','مراجعة')} <ArrowUpRight className="h-3.5 w-3.5"/>
                         </button>
                         :<span className="text-[10px] text-content-soft">
