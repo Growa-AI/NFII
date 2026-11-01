@@ -14,6 +14,9 @@ import { COMMODITY_CATALOG } from '@/lib/platform/commodity-catalog'
 import { PageHeader } from '@/components/brand/layout'
 import { GlobalSupplierResearch } from '@/components/dashboard/nfii-ops/global-supplier-research'
 import { CropProducerDiscovery } from '@/components/dashboard/nfii-ops/crop-producer-discovery'
+import { ProcurementRecordPanel } from '@/components/dashboard/nfii-ops/procurement-record-panel'
+import {approvalTarget,contractPosition,procurementRecordLabel,
+  type ProcurementRecordView} from '@/lib/nfii/procurement-workflow'
 import {
   ProcurementHome, ProcurementJourney, ProcurementStageHeading,
   procurementTabCollection, procurementTabKind, type ProcurementTab,
@@ -276,12 +279,16 @@ export function NfiiOperationsWorkspace({focus}:{focus:OperationsArea}){
   const [procurementTab,setProcurementTab]=useState<ProcurementTab>('overview')
   const [recordSearch,setRecordSearch]=useState('')
   const [recordStatus,setRecordStatus]=useState('all')
+  const [selectedProcurementRecord,setSelectedProcurementRecord]=useState<{
+    view:ProcurementRecordView;id:string
+  }|null>(null)
 
   useEffect(()=>{
     setSnapshot(null)
     setError('')
     setNotice('')
     setPendingAction(null)
+    setSelectedProcurementRecord(null)
     if(!orgId||orgLoading){setLoading(false);return}
     const controller=new AbortController()
     const load=async()=>{
@@ -336,6 +343,7 @@ export function NfiiOperationsWorkspace({focus}:{focus:OperationsArea}){
 
   function selectProcurementTab(tab:ProcurementTab){
     setProcurementTab(tab)
+    setSelectedProcurementRecord(null)
     const collection=procurementTabCollection(tab)
     const kind=procurementTabKind(tab)
     if(collection)setActiveView(collection)
@@ -347,6 +355,45 @@ export function NfiiOperationsWorkspace({focus}:{focus:OperationsArea}){
     setPendingAction(null)
     setNotice('')
   }
+
+  function openProcurementRecord(view:ProcurementRecordView,id:string){
+    const collection=view==='purchaseOrders'?'purchaseOrders':view
+    if(!s[collection].some(row=>row.id===id)){
+      setError(tx('Record unavailable in the loaded register. Refresh to inspect it.',
+        'السجل غير متاح في القائمة المحملة.'))
+      return
+    }
+    const next:ProcurementTab=view==='purchaseOrders'?'orders':view
+    if(procurementTab!==next)selectProcurementTab(next)
+    setActiveView(collection)
+    setSelectedProcurementRecord({view,id})
+    setRecordSearch('')
+    setRecordStatus('all')
+    setError('')
+  }
+
+  function startLinkedRecord(kind:'contract'|'purchase_order',parent:OperationsRow){
+    if(isPreview||!canEdit||!orgId)return
+    selectProcurementTab(kind==='contract'?'contracts':'orders')
+    setFormKind(kind)
+    setFormValues(kind==='contract'?{
+      supplierId:parent.id,
+    }:{
+      contractId:parent.id,
+      orderedTonnes:String(Math.min(
+        contractPosition(s,parent,today).availableAfterPendingTonnes,
+        contractPosition(s,parent,today).remainingTonnes,
+      ).toFixed(3)),
+    })
+    setFormOpen(true)
+    setNotice(tx('Linked draft prepared. Complete the required fields and submit for independent review.',
+      'تم إعداد مسودة مرتبطة. أكمل الحقول وقدمها للمراجعة.'))
+    window.requestAnimationFrame(()=>document.getElementById('nfii-create-record')?.
+      scrollIntoView({behavior:'smooth',block:'start'}))
+  }
+
+  const selectedRow=selectedProcurementRecord?
+    s[selectedProcurementRecord.view].find(row=>row.id===selectedProcurementRecord.id)??null:null
 
   const visibleRows=focus==='procurement'
     ?s[activeView].filter(row=>{
@@ -784,6 +831,26 @@ export function NfiiOperationsWorkspace({focus}:{focus:OperationsArea}){
             </section>
 
             <aside className="min-w-0 space-y-4">
+              {focus==='procurement'&&selectedProcurementRecord&&selectedRow&&
+                <ProcurementRecordPanel
+                  key={selectedProcurementRecord.view+':'+selectedProcurementRecord.id}
+                  view={selectedProcurementRecord.view}
+                  record={selectedRow} snapshot={s} today={today}
+                  isPreview={isPreview} canEdit={canEdit} canApprove={canApprove}
+                  busy={busy} currentUserId={user?.id??null}
+                  onClose={()=>setSelectedProcurementRecord(null)}
+                  onOpen={openProcurementRecord}
+                  onCreateContract={supplier=>startLinkedRecord('contract',supplier)}
+                  onCreateOrder={contract=>startLinkedRecord('purchase_order',contract)}
+                  onOpenApproval={approval=>{
+                    openProcurementRecord('approvals',approval.id)
+                    if(approval.status==='pending'&&canApprove&&!isPreview&&
+                      approval.submitted_by!==user?.id)
+                      openAction('approval',approval,'approve')
+                  }}
+                  onGoToLogistics={()=>{window.location.assign('/dashboard/logistics')}}
+                />}
+
               {(focus!=='procurement'||procurementTab!=='approvals')&&
               <section id="nfii-create-record" className="nfii-panel overflow-hidden">
                 <div className="flex items-center justify-between border-b border-line px-4 py-3">
