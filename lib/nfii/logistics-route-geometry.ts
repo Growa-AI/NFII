@@ -72,6 +72,6 @@ export function matchesRequestedSeaPorts(
   const aligned=(distance(start,origin)<300&&distance(end,destination)<300)||
     (distance(start,destination)<300&&distance(end,origin)<300)
   if(!aligned)return false
-  if(via&&!flattened.some(point=>distance(point,via)<350))return false
+  if(via&&!flattened.some(point=>distance(point,via)<180))return false
   return true
 }
