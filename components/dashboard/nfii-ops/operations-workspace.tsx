@@ -12,6 +12,8 @@ import { useActiveOrganizationOptional } from '@/contexts/active-organization-co
 import { useI18n } from '@/lib/i18n'
 import { COMMODITY_CATALOG } from '@/lib/platform/commodity-catalog'
 import { PageHeader } from '@/components/brand/layout'
+import { GlobalSupplierResearch } from '@/components/dashboard/nfii-ops/global-supplier-research'
+import { supplierDraftCode, type SupplierCandidate } from '@/lib/nfii/procurement-global'
 import {
   OPERATION_FIELDS, type NfiiOperationKind, type OperationField,
 } from '@/lib/nfii/operations-validation'
@@ -56,7 +58,7 @@ const AREA: Record<OperationsArea, {
 }> = {
   procurement: {
     en:'Procurement control',ar:'إدارة المشتريات',
-    subtitleEn:'Suppliers, approved contracts and purchase commitments, with independent sign-off.',
+    subtitleEn:'Live global supplier research, sourcing markets, contracts and purchase approvals.',
     subtitleAr:'الموردون والعقود المعتمدة والتزامات الشراء بموافقات مستقلة.',
     collections:['suppliers','contracts','purchaseOrders','approvals'],
     kinds:['supplier','contract','purchase_order'],
@@ -313,6 +315,23 @@ export function NfiiOperationsWorkspace({focus}:{focus:OperationsArea}){
   const canCreate=formKind==='release'?canPropose:canEdit
   const reserves=useMemo(()=>reservePosition(s,today),[s,today])
 
+  function prepareSupplier(candidate:SupplierCandidate){
+    if(!orgId||isPreview||!canEdit||candidate.source!=='GLEIF'||
+      !candidate.countryCode||candidate.name.length>200)return
+    setActiveView('suppliers')
+    setFormKind('supplier')
+    setFormValues({
+      code:supplierDraftCode(candidate),
+      name:candidate.name,
+      countryCode:candidate.countryCode,
+    })
+    setFormOpen(true)
+    setError('')
+    setNotice(tx('Supplier draft prepared from global research. Verify its legal name, food activity and country before saving for independent review.',
+      'أُعدت مسودة مورد من البحث العالمي. تحقق من الاسم القانوني والنشاط الغذائي والدولة قبل الحفظ للمراجعة المستقلة.'))
+    document.getElementById('nfii-create-record')?.scrollIntoView({behavior:'smooth',block:'start'})
+  }
+
   const recentApprovals=s.approvals.filter(row=>row.status==='pending')
   const scopedApprovals=focus==='procurement'
     ? recentApprovals.filter(row=>['supplier','contract','purchase_order'].includes(String(row.target_type)))
@@ -524,6 +543,15 @@ export function NfiiOperationsWorkspace({focus}:{focus:OperationsArea}){
         {truncated.join(', ')}
       </div>}
 
+      {focus==='procurement'&&(
+        <GlobalSupplierResearch
+          organizationId={orgId}
+          canCreateSupplier={Boolean(orgId)&&!isPreview&&canEdit}
+          existingSupplierCodes={s.suppliers.map(row=>row.code??'')}
+          onPrepareSupplier={prepareSupplier}
+        />
+      )}
+
       {orgLoading||loading?(
         <div className="nfii-panel p-10 text-[13px] text-content-soft" role="status">
           {tx('Loading organization operations…','جارٍ تحميل عمليات المؤسسة…')}
@@ -625,7 +653,7 @@ export function NfiiOperationsWorkspace({focus}:{focus:OperationsArea}){
             </section>
 
             <aside className="min-w-0 space-y-4">
-              <section className="nfii-panel overflow-hidden">
+              <section id="nfii-create-record" className="nfii-panel overflow-hidden">
                 <div className="flex items-center justify-between border-b border-line px-4 py-3">
                   <h2 className="flex items-center gap-2 text-[13px] font-semibold">
                     <Plus className="h-3.5 w-3.5 text-content-accent"/>
