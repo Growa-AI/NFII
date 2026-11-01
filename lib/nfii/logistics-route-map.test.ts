@@ -1,5 +1,5 @@
 import {describe,expect,it} from 'vitest'
-import {readSeaRouteGeometry,splitAtDateline} from './logistics-route-geometry'
+import {readSeaRouteGeometry,splitAtDateline,matchesRequestedSeaPorts} from './logistics-route-geometry'
 import {makeRouteMapOverlays,previewRouteMapOverlays} from './logistics-route-map'
 import {buildScreenedRoutes} from './logistics-screening'
 import {readFileSync} from 'node:fs'
@@ -56,7 +56,16 @@ describe('Interactive food import routes on a real map',()=>{
     expect(preliminary.some(x=>x.id==='sea_direct')).toBe(true)
     expect(preliminary.some(x=>x.id==='air_direct')).toBe(true)
     expect(preliminary.every(x=>x.fidelity==='illustrative'&&x.paths.length===0)).toBe(true)
+    expect(preliminary.some(x=>x.id==='air_dubai')).toBe(false)
+    expect(preliminary.some(x=>x.id==='sea_salalah')).toBe(false)
     expect(previewRouteMapOverlays('XX')).toEqual([])
+  })
+  it('rejects sea geometry that does not join the actual endpoints or declared hub',()=>{
+    const src:[number,number]=[18.95,72.95]
+    const dest:[number,number]=[25,51.61]
+    expect(matchesRequestedSeaPorts([[[18.95,72.95],[25,51.61]]],src,dest)).toBe(true)
+    expect(matchesRequestedSeaPorts([[[18.95,72.95],[25,51.61]]],src,dest,[24.99,55.06])).toBe(false)
+    expect(matchesRequestedSeaPorts([[[10,20],[11,22]]],src,dest)).toBe(false)
   })
   it('wires map selection to details while preserving source distinctions',()=>{
     expect(api).toContain('mapRoutes:makeRouteMapOverlays')
