@@ -16,9 +16,8 @@ const reply=(body:unknown,status=200)=>NextResponse.json(body,{
 })
 
 /**
- * This provides a LIMITED crop-keyed extract from the publisher's public
- * certified-product directory. Not a fresh remote API and not an
- * independently verified real-world grower/certificate status.
+ * Returns a curated, bounded multi-publisher directory with exact crop or
+ * crop-sector evidence. Historical listings, not a live certification API.
  */
 export async function GET(request:Request){
   const params=new URL(request.url).searchParams
@@ -38,22 +37,26 @@ export async function GET(request:Request){
 
   const results=findDocumentedCropOrganizations(parsed.commodity,parsed.country)
   return reply({
-    provider:'fairtsa-excerpt',
+    provider:'crop-sector-directory',
     commodity:parsed.commodity,
     country:parsed.country,
     retrievedAt:new Date().toISOString(),
     excerptCheckedOn:FAIRTSA_EXCERPT_CHECKED,
-    source:'FairTSA public product directory',
+    source:'Attributed published crop-sector registries',
     sourceUrl:FAIRTSA_REGISTRY_URL,
+    sourceCount:new Set(results.map(row=>row.sourceUrl)).size,
+    countryCount:new Set(results.map(row=>row.countryCode)).size,
+    evidenceBreakdown:Object.fromEntries([...new Set(results.map(row=>row.evidenceType))].map(type=>[
+      type,results.filter(row=>row.evidenceType===type).length])),
     results,
     sourceCoverage:cropProducerCoverage(),
     completeGlobalCoverage:false,
     liveCertificateVerified:false,
-    note:'This is a small attributed excerpt of real organizations and products '+
-      'from FairTSA public listings, NOT a live worldwide database. '+
-      'A product listing does not prove own-farm cultivation, active certification, '+
-      'export capacity, Qatar eligibility, stock or contract availability. '+
-      'Always recheck the publisher and producer or certifying body.',
+    note:'Curated documented sourcing leads from several published directories, NOT a live ' +
+      'global supplier census or current independent verification. Association membership, ' +
+      'market listings, product certificates and national marks have DIFFERENT evidentiary strength. ' +
+      'They do not prove own-farm production, current certification, export eligibility, ' +
+      'capacity, stock or contract availability. Verify each individual original source.',
     independentSources:[
       {label:'USDA Organic INTEGRITY - certified operations and products',
         url:USDA_ORGANIC_REGISTRY_URL,
