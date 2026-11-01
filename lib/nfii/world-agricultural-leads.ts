@@ -84,7 +84,7 @@ export function parseExpandedFarmResults(raw:unknown,commodity:string,country:st
     const name=string(tags.name)
     const id=row.id
     const type=string(row.type)
-    if(!name||name.length>160||!/^[a-zA-Z0-9]/.test(name)||
+    if(!name||name.length>160||/[\x00-\x1f<>]/.test(name)||
       !Number.isSafeInteger(id)||Number(id)<=0||
       !['node','way','relation'].includes(type))continue
     const tag=farmType(tags,crop.id)
