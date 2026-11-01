@@ -76,6 +76,7 @@ export function LogisticsRouteMap({routes,selectedId,onSelect,locale}:Props){
           (route.fidelity==='illustrative'?' · illustrative':' · routed geometry')))
         line.on('click',()=>handler.current(route.id))
       }
+      positions.push(format(route.origin),format(route.destination))
       const show=selected
       if(show){
         L.circleMarker(format(route.origin),{
@@ -84,6 +85,10 @@ export function LogisticsRouteMap({routes,selectedId,onSelect,locale}:Props){
         L.circleMarker(format(route.destination),{
           radius:7,color:'#2F5D50',weight:2,fillColor:'#ffffff',fillOpacity:1,
         }).bindTooltip(route.to).addTo(layers)
+      }
+      if(!route.paths.length&&selected){
+        L.circleMarker(format(route.origin),{radius:8,color:colors[route.mode],weight:2,fillOpacity:.25})
+          .bindTooltip('Origin hub · route geometry not verified').addTo(layers)
       }
     }
     if(positions.length){
@@ -116,11 +121,11 @@ export function LogisticsRouteMap({routes,selectedId,onSelect,locale}:Props){
       </span>
       <span className="inline-flex items-center gap-2">
         <span className="h-0 w-7 border-t-[3px] border-dashed border-content-soft"/>
-        {locale==='ar'?'مسار توضيحي غير مؤكد':'Dashed: illustrative, not a confirmed route'}
+        {locale==='ar'?'لا تُعرض المسارات غير الموثقة':'No line without a verified geometry'}
       </span>
       <span className="inline-flex items-center gap-2">
         <span className="h-0 w-7 border-t-[3px] border-solid border-content-soft"/>
-        {locale==='ar'?'هندسة المسار من مصدر API':'Solid: API-sourced routing geometry'}
+        {locale==='ar'?'مسار بحري موثق هندسياً':'Solid: verified maritime routing geometry'}
       </span>
     </div>
   </div>
