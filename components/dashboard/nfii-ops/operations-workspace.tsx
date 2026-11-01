@@ -846,11 +846,11 @@ export function NfiiOperationsWorkspace({focus}:{focus:OperationsArea}){
                   onOpen={openProcurementRecord}
                   onCreateContract={supplier=>startLinkedRecord('contract',supplier)}
                   onCreateOrder={contract=>startLinkedRecord('purchase_order',contract)}
-                  onOpenApproval={approval=>{
-                    openProcurementRecord('approvals',approval.id)
+                  onOpenApproval={(approval,decision)=>{
                     if(approval.status==='pending'&&canApprove&&!isPreview&&
-                      approval.submitted_by!==user?.id)
-                      openAction('approval',approval,'approve')
+                      approval.submitted_by!==user?.id&&
+                      (decision==='reject'||approvalReadiness(s,approval,today).ready))
+                      openAction('approval',approval,decision)
                   }}
                   onGoToLogistics={()=>{window.location.assign('/dashboard/logistics')}}
                 />}
