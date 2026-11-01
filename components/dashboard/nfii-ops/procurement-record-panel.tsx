@@ -23,7 +23,7 @@ type Props={
   onOpen:(view:ProcurementRecordView,id:string)=>void
   onCreateContract:(supplier:OperationsRow)=>void
   onCreateOrder:(contract:OperationsRow)=>void
-  onOpenApproval:(approval:OperationsRow)=>void
+  onOpenApproval:(approval:OperationsRow,decision:'approve'|'reject')=>void
   onGoToLogistics:()=>void
 }
 const amount=(n:number,digits=2)=>n.toLocaleString('en-US',{
@@ -221,11 +221,22 @@ export function ProcurementRecordPanel(props:Props){
           className="nfii-button w-full">
           <Truck className="h-4 w-4"/>{tx('Open Logistics to plan shipment','فتح الشحن والتوريد')}
         </button>}
-      {view==='approvals'&&isReviewer&&<button type="button"
-        disabled={!readiness?.ready} onClick={()=>onOpenApproval(record)}
-        className="nfii-button w-full disabled:opacity-50">
-        <ClipboardCheck className="h-4 w-4"/>{tx('Review approval or rejection','مراجعة الموافقة أو الرفض')}
-      </button>}
+      {view==='approvals'&&isReviewer&&<div className="grid grid-cols-2 gap-2">
+        <button type="button" disabled={!readiness?.ready}
+          onClick={()=>onOpenApproval(record,'approve')}
+          className="nfii-button w-full disabled:opacity-50">
+          <CheckCircle2 className="h-4 w-4"/>{tx('Approve','اعتماد')}
+        </button>
+        <button type="button"
+          onClick={()=>onOpenApproval(record,'reject')}
+          className="nfii-button nfii-button-secondary w-full">
+          <ShieldAlert className="h-4 w-4"/>{tx('Reject','رفض')}
+        </button>
+        <p className="col-span-2 text-[10px] text-content-soft">
+          {tx('Either decision requires an independently documented note and a second confirmation.',
+            'يتطلب كلا القرارين ملاحظة موثقة وتأكيداً مستقلاً.')}
+        </p>
+      </div>}
       {isPreview&&<p className="text-[11px] text-content-soft">
         <Users className="me-1 inline h-3.5 w-3.5"/>
         {tx('Example only. Change to Live data to create or approve records.',
