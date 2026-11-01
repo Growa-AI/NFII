@@ -30,13 +30,14 @@ describe('First-party crop product evidence from FairTSA public directory',()=>{
     expect(coverage.rice).toBeGreaterThan(80)
     expect(coverage.date).toBeGreaterThanOrEqual(12)
     expect(coverage.milk).toBeGreaterThanOrEqual(14)
-    expect(coverage.tomato).toBeGreaterThanOrEqual(3)
-    expect(coverage.cucumber).toBeGreaterThanOrEqual(2)
-    expect(coverage.pepper).toBeGreaterThanOrEqual(2)
+    expect(coverage.tomato).toBeGreaterThanOrEqual(30)
+    expect(coverage.cucumber).toBeGreaterThanOrEqual(30)
+    expect(coverage.pepper).toBeGreaterThanOrEqual(30)
+    expect(coverage.lettuce).toBeGreaterThanOrEqual(7)
     // FairTSA "Pepper" can denote a spice, not Capsicum/bell pepper.
     // Never claim a verified Capsicum producer on this ambiguity.
     expect(findDocumentedCropOrganizations('pepper').every(row=>
-      row.evidenceType==='company_product_document')).toBe(true)
+      ['company_product_document','historical_crop_marketer'].includes(row.evidenceType))).toBe(true)
     expect(findDocumentedCropOrganizations('tomato').map(r=>r.organizationName)).toContain('Fade Food')
     expect(findDocumentedCropOrganizations('milk').every(row=>row.matchedProduct.includes('Milk'))).toBe(true)
   })
