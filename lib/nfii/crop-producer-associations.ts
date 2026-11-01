@@ -7,7 +7,10 @@
 export type CropSourceEvidenceType =
   'crop_sector_association_member'|'national_dates_mark_holder'|
   'company_product_document'|'public_milk_price_listing'|
-  'independent_commodity_listing'|'historical_crop_marketer'
+  'independent_commodity_listing'|'historical_crop_marketer'| 
+  'farm_own_crop_claim'|'government_or_institutional_crop_profile'|
+  'agritourism_crop_listing'|'farm_product_catalogue'|'manufacturer_product_listing'|
+  'trader_product_catalogue'|'historical_farm_crop_report'
 
 export interface ExtraCropListing {
   recordId:string
@@ -19,6 +22,8 @@ export interface ExtraCropListing {
   sourceName:string
   sourceUrl:string
   evidenceType:CropSourceEvidenceType
+  supplierRole?:'farm_claim'|'farm_other'|'manufacturer'|'trader'
+  evidenceSummary?:string
 }
 
 const INDIA_RICE=[
