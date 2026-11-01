@@ -658,7 +658,6 @@ export function NfiiOperationsWorkspace({focus}:{focus:OperationsArea}){
         <LogisticsCorridorIntelligence
           organizationId={orgId}
           operations={s}
-          isPreview={isPreview}
         />}
 
       {focus==='procurement' && !orgLoading && !loading && (
