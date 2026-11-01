@@ -49,6 +49,7 @@ export function CropProducerDiscovery({organizationId}:{organizationId:string|nu
   const [shortlist,setShortlist]=useState<CropProducerEvidence[]>([])
   const [copyStatus,setCopyStatus]=useState('')
   const [visibleCount,setVisibleCount]=useState(20)
+  const [roleFilter,setRoleFilter]=useState('all')
   const controller=useRef<AbortController|null>(null)
 
   const invalidate=()=>{
@@ -59,6 +60,7 @@ export function CropProducerDiscovery({organizationId}:{organizationId:string|nu
     setData(null)
     setCopyStatus('')
     setVisibleCount(20)
+    setRoleFilter('all')
   }
 
   const search=async(event:FormEvent<HTMLFormElement>)=>{
@@ -106,7 +108,7 @@ export function CropProducerDiscovery({organizationId}:{organizationId:string|nu
         'Registry reference','Registry source','Status'],
       ...shortlist.map(record=>[
         record.organizationName,record.matchedProduct,
-        record.countryName,record.evidenceType,record.recordId,
+        record.countryName,record.evidenceType+(record.supplierRole?' / '+record.supplierRole:''),record.recordId,
         record.sourceUrl,'Current certificate and grower role NOT verified',
       ]),
     ]
@@ -119,6 +121,9 @@ export function CropProducerDiscovery({organizationId}:{organizationId:string|nu
     }
   }
 
+  const filtered=data?.results.filter(record=>roleFilter==='all'||
+    (roleFilter==='farm'?(record.supplierRole==='farm_claim'||record.supplierRole==='farm_other'):
+      roleFilter==='other'?!record.supplierRole:record.supplierRole===roleFilter))??[]
   return <section aria-label={tx('Search producers by crop','البحث عن المنتجين حسب المحصول')}
     className="nfii-panel space-y-4 p-4 md:p-5">
     <div className="flex flex-wrap items-start justify-between gap-3">
@@ -216,9 +221,21 @@ export function CropProducerDiscovery({organizationId}:{organizationId:string|nu
         </a>
       </div>
 
-      {data.results.length>0?(
+      <div className="flex flex-wrap items-center gap-3 text-[12px]">
+        <label className="inline-flex items-center gap-2"><span className="text-content-soft">{tx('Supplier role','نوع المورد')}</span>
+          <select aria-label={tx('Supplier role','نوع المورد')} className="nfii-input min-h-9" value={roleFilter}
+            onChange={event=>{setRoleFilter(event.target.value);setVisibleCount(20)}}>
+            <option value="all">{tx('All documented leads','جميع الجهات الموثقة')}</option>
+            <option value="farm">{tx('Farms / growers','المزارع والمنتجون')}</option>
+            <option value="manufacturer">{tx('Food manufacturers','مصنعو الأغذية')}</option>
+            <option value="trader">{tx('Importers / traders','المستوردون والتجار')}</option>
+            <option value="other">{tx('Other registries','سجلات أخرى')}</option>
+          </select></label>
+        <span className="text-content-soft">{filtered.length} {tx('matches for selected role','نتيجة للدور المحدد')}</span>
+      </div>
+      {filtered.length>0?(
         <div className="grid gap-3 xl:grid-cols-2">
-          {data.results.slice(0,visibleCount).map(record=>{
+          {filtered.slice(0,visibleCount).map(record=>{
             const chosen=shortlist.some(x=>x.recordId===record.recordId&&
               x.sourceUrl===record.sourceUrl&&x.organizationName===record.organizationName)
             return <article key={record.sourceUrl+record.recordId}
@@ -236,6 +253,7 @@ export function CropProducerDiscovery({organizationId}:{organizationId:string|nu
                   [tx('Evidence type','نوع الدليل'),record.evidenceType.replaceAll('_',' ')],
                   [tx('Directory ID','معرف الدليل'),record.recordId],
                   [tx('Publisher','الناشر'),record.sourceName],
+                  ...(record.supplierRole?[[tx('Supplier role','دور المورد'),record.supplierRole.replaceAll('_',' ')]]:[]),
                 ].map(([label,value])=>(
                   <div key={label} className="min-w-0">
                     <p className="text-[10px] text-content-soft">{label}</p>
@@ -243,6 +261,7 @@ export function CropProducerDiscovery({organizationId}:{organizationId:string|nu
                   </div>
                 ))}
               </div>
+              {record.evidenceSummary&&<p className="mt-3 rounded-md border border-line bg-muted/20 p-2 text-[11px] text-content-soft">{record.evidenceSummary}</p>}
               <div className="mt-3 rounded-lg border border-warning-line bg-warning-soft p-2.5 text-[11px] text-content">
                 {tx('Grower role: NOT independently confirmed · Certification varies by source · Export/stock: UNKNOWN',
                   'صفة المزارع: غير مثبتة · سريان الشهادة: غير مفحوص · التصدير والمخزون: غير معروف')}
@@ -264,17 +283,17 @@ export function CropProducerDiscovery({organizationId}:{organizationId:string|nu
               </div>
             </article>
           })}
-          {data.results.length>visibleCount&&<div className="col-span-full text-center">
+          {filtered.length>visibleCount&&<div className="col-span-full text-center">
             <button type="button" onClick={()=>setVisibleCount(count=>count+30)}
               className="nfii-button min-h-10 px-5">
-              {tx('Show more documented leads','عرض المزيد من الجهات')} ({data.results.length-visibleCount})
+              {tx('Show more documented leads','عرض المزيد من الجهات')} ({filtered.length-visibleCount})
             </button>
           </div>}
         </div>
       ):(
         <div className="rounded-lg border border-line bg-background p-4">
           <p className="text-[13px] font-medium text-content">
-            {tx('No published crop match in the current directory','لا توجد مطابقة في هذا المقتطف المحدود')}
+            {tx(roleFilter==='all'?'No published crop match in the current directory':'No documented matches for this supplier role','لا توجد مطابقة في هذا المقتطف المحدود')}
           </p>
           <p className="mt-1 text-[12px] text-content-soft">
             {tx('No match is not proof that producers do not exist. Check the broader official databases below; NFII does not invent suppliers.',
