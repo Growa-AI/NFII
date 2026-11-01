@@ -27,6 +27,9 @@ type OriginResponse={
     historicalUnitValueQarKg:null;feasibility:'local_supplier_research'}
   dataStatus:'available'|'unavailable'
   providerWarnings:number
+  historicalFallbackUsed?:boolean
+  provenance?:{publisher:string;hsCode:string;productScope:string;sourceUrls:string[]}|null
+  priceUnavailabilityReason?:string|null
 }
 
 const fmt=(value:number|null,digits=2):string=>value===null?'N/A':
@@ -131,6 +134,22 @@ export function OriginPriceIntelligence({
         </div>)}
       </div>
 
+      {data?.historicalFallbackUsed&&<div role="status"
+        className="rounded-lg border border-line-accent bg-cream-100/25 p-3 text-[12px] text-content">
+        <strong>{tx('Historical fallback: World Bank WITS 2024','مصدر تاريخي بديل: البنك الدولي ٢٠٢٤')}</strong>
+        <p className="mt-1 text-[11px] text-content-soft">
+          {tx('The live trade API had no usable observations, so this comparison uses attributed, published 2024 import records. It does not show 2025 or live prices.',
+            'تستخدم المقارنة بيانات واردات قطر المنشورة لعام ٢٠٢٤ وليست أسعاراً مباشرة.')}
+          {' '}{data.provenance?.productScope}
+        </p>
+        <div className="mt-2 flex flex-wrap gap-3">
+          {data.provenance?.sourceUrls.map(url=><a key={url} href={url}
+            target="_blank" rel="noopener noreferrer"
+            className="text-sage-700 underline">
+            {tx('Published WITS table','جدول WITS')} <ExternalLink className="inline h-3 w-3"/>
+          </a>)}
+        </div>
+      </div>}
       {cheapest&&<div className="rounded-lg border border-line-accent bg-cream-100/25 p-3">
         <div className="flex items-center gap-2">
           <TrendingDown className="h-4 w-4 text-sage-700"/>
@@ -185,7 +204,7 @@ export function OriginPriceIntelligence({
           </div>
         </div>
       </div>:<div className="rounded-lg border border-warning-line bg-warning-soft p-3 text-[12px] text-content">
-        {tx('No trustworthy price comparison: available records do not meet the minimum annual volume and value thresholds. Prices are intentionally not fabricated.',
+        {tx('No trustworthy price comparison from live trade or published historical data. The provider may be unavailable or the available records do not meet minimum trade thresholds. No prices were fabricated.',
           'لا توجد مقارنة موثوقة للأسعار: السجلات المتاحة لا تحقق الحد الأدنى للحجم والقيمة السنوية.')}
       </div>}
 
@@ -241,7 +260,7 @@ export function OriginPriceIntelligence({
 
       <div className="flex flex-wrap items-center justify-between gap-2 text-[10px] text-content-soft">
         <p>
-          {tx('Source: UN Comtrade annual public preview; historical customs values, not quotations. ',
+          {tx('Source: historical UN Comtrade / World Bank WITS Qatar imports; customs values, not quotations. ',
             'المصدر: بيانات التجارة السنوية للأمم المتحدة، ليست عروض أسعار. ')}
           {tx('Exchange: 1 USD = 3.64 QAR. Minimum annual volume: ','الصرف: الدولار = 3.64 ريال. الحد الأدنى السنوي: ')}
           {report.annualMinimumTonnes} {tx('tonnes.','طن.')}
@@ -255,7 +274,7 @@ export function OriginPriceIntelligence({
         {tx('Public preview may be truncated: results are indicative, not complete rankings.',
           'قد تكون البيانات العامة مقتطعة: النتائج إرشادية وليست ترتيباً كاملاً.')}
       </p>}
-      {data?.providerWarnings>0&&<p className="text-[11px] text-warning-strong">
+      {data?.providerWarnings>0&&!data.historicalFallbackUsed&&<p className="text-[11px] text-warning-strong">
         {tx('Some requested years were unavailable; comparison uses available historical reports.',
           'بعض السنوات غير متاحة؛ المقارنة تعتمد على البيانات المتوفرة.')}
       </p>}
