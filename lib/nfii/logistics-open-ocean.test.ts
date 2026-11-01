@@ -18,6 +18,14 @@ describe('Real offline ocean-network fallback, never geographic straight lines',
     expect(routeDistanceKm(route.geometry)).toBeGreaterThan(
       haversineKm(start,QATAR_PORT)*.92)
   },20000)
+  it('computes Thailand Laem Chabang to Hamad Port without a SeaRoutes key',()=>{
+    const hub=getExportHub('TH')!
+    const route=calculateOpenOceanRoute('TH')
+    expect(route, 'TH reference '+JSON.stringify(hub.sea)+' to '+JSON.stringify(QATAR_PORT)).not.toBeNull()
+    if(!route)return
+    expect(route.geometry.flat().length).toBeGreaterThan(20)
+    expect(route.km).toBeGreaterThan(haversineKm(hub.sea,QATAR_PORT))
+  },30000)
   it('returns missing without inventing a route for unsupported countries',()=>{
     expect(calculateOpenOceanRoute('XX')).toBeNull()
   })
