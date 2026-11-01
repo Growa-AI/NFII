@@ -6,9 +6,9 @@ The crop-first sourcing endpoint `GET /api/nfii/procurement/crop-producers?commo
 now returns an attributed, deduplicated **multi-publisher research directory** instead of
 only the initial nine FairTSA organization records.
 
-The expanded collection adds **133 crop–organization associations** from published
+The expanded collection adds **238 crop–organization associations** from published
 directory snapshots. A single organization may appear for several commodities, so
-**133 is not a count of distinct suppliers, verified growers or export-ready firms**.
+**238 is not a count of distinct suppliers, verified growers or export-ready firms**.
 
 - **Rice, India:** 41 published industry association participants from All India Rice
   Exporters Association 2024–25 governing-body list, source:
@@ -25,6 +25,11 @@ directory snapshots. A single organization may appear for several commodities, s
 - **Wheat / barley, Australia:** 5 sector participants each (10 associations)
   named against both commodities by an independent grain-sector publication;
   source: https://grain.net.au/traders-brokers/
+- **Tomato / cucumber / pepper / lettuce, Spain:** COEXPHAL's 2021/22
+  annual report lists **32 tomato, 32 cucumber, 34 pepper and 7 lettuce**
+  crop-specific marketing-organization associations (105 source rows).
+  Data is historical and does not establish current supplier activity.
+  Source: https://www.coexphal.es/wp-content/uploads/2023/10/MEMORIA-COEXPHAL-2022.pdf
 - **Tomato / cucumber / pepper, Spain:** 2 named cooperative operators each
   (6 associations) linked to documented product certificates published by
   the operators. Certificate snapshots are not live authorization checks.
@@ -49,6 +54,8 @@ The source categories are intentionally non-equivalent:
   not proof of export capability, production volume or an active commercial offer.
 - `public_milk_price_listing`: organization appears with milk price observations;
   not proof of raw milk producer status or international availability.
+- `historical_crop_marketer`: organization listed as a marketer of the specified
+  crop in a dated agricultural association annual report; not proof of current stock.
 - `independent_commodity_listing`: third-party sector summary, not certification
   or direct producer confirmation.
 
