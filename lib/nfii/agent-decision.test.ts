@@ -83,7 +83,7 @@ describe('Final executive recommendation across agent specialists',()=>{
     const modified={
       ...operations,
       shipments: operations.shipments.map(s=>
-        s.shipment_ref?.includes('RICE-PK')?{...s,status:'delayed'}:s),
+        s.shipment_ref?.includes('RICE-PK')?{...s,status:'delayed' as const}:s),
     }
     const balance=calculateFoodBalance(buildQatarIllustrativeFoodBalanceInput('rice',today,30))
     const result=simulateCommodityAgents({
