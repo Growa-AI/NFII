@@ -45,10 +45,17 @@ describe('Crop-first, evidence-led Procurement discovery',()=>{
   it('shows source-specific evidence and allows pagination without accidental approval',()=>{
     expect(ui).toContain("record.evidenceType.replaceAll('_',' ')")
     expect(ui).toContain('record.sourceName')
-    expect(ui).toContain('data.results.slice(0,visibleCount)')
+    expect(ui).toContain('filtered.slice(0,visibleCount)')
     expect(ui).toContain('Show more documented leads')
     expect(route).toContain('evidenceBreakdown')
     expect(route).toContain('sourceCount')
+  })
+  it('distinguishes Qatar farms, food manufacturers and wholesale traders',()=>{
+    expect(ui).toContain('Supplier role')
+    expect(ui).toContain('Importers / traders')
+    expect(ui).toContain('Farms / growers')
+    expect(ui).toContain('record.evidenceSummary')
+    expect(source).toContain('QATAR_NAMED_PROSPECTS')
   })
   it('connects users to primary certification directories for broader searches',()=>{
     expect(ui).toContain('USDA Organic INTEGRITY')
