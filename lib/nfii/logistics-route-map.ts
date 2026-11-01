@@ -28,8 +28,7 @@ export function makeRouteMapOverlays(
     const via=route.id==='sea_jebel_ali'?jebel:
       route.id==='sea_salalah'?salalah:route.id==='air_dubai'?dubai:null
     const published=route.mode==='sea'?observed?.[route.id]?.geometry:null
-    const paths=published?.length?splitAtDateline(published):
-      splitAtDateline([[origin,...(via?[via]:[]),destination]])
+    const paths=published?.length?splitAtDateline(published):[]
     return {
       id:route.id,mode:route.mode,
       paths,
@@ -38,7 +37,7 @@ export function makeRouteMapOverlays(
       origin,destination,
       source:published?.length?'SeaRoutes':null,
     }
-  }).filter(item=>item.paths.length>0)
+  })
 }
 
 /**
@@ -71,8 +70,8 @@ export function previewRouteMapOverlays(country:string):RouteMapOverlay[]{
     from:row.mode==='air'?hub.airport:hub.port,
     to:row.mode==='air'?QATAR_AIR.name:
       row.mode==='road'?QATAR_ROAD.name:QATAR_PORT.name,
-    paths:splitAtDateline([[row.origin,...(row.via?[row.via]:[]),row.end]]),
+    paths:[],
     via:row.via?'Candidate transfer hub':null,
     fidelity:'illustrative' as const,source:null,
-  })).filter(x=>x.paths.length>0)
+  }))
 }
