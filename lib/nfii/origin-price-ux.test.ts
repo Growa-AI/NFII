@@ -23,7 +23,7 @@ describe('Commodity-led Qatar price intelligence UI and API security',()=>{
     expect(crop).toContain('feasibleCountries.map')
     expect(crop).not.toContain('WORLD_COUNTRIES.map')
     expect(crop).toContain('<OriginPriceIntelligence')
-    expect(ui).toContain("onCountriesLoaded(body.shortlist")
+    expect(ui).toContain('onCountriesLoaded(body.localQatar.documentedLeads>0?')
     expect(ui).toContain("onSelectCountry(row.countryCode)")
   })
   it('shows visible historical average prices and price/volume charts',()=>{
