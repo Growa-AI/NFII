@@ -5,7 +5,7 @@ import type {ScreenedRoute,RouteInputs} from './logistics-screening'
 export type RouteMapOverlay={
   id:string;mode:ScreenedRoute['mode']
   paths:GeoLine
-  fidelity:'provider_geometry'|'illustrative'
+  fidelity:'provider_geometry'|'modeled_geometry'|'illustrative'
   from:string;to:string;via:string|null
   origin:GeoPointTuple;destination:GeoPointTuple
   source:string|null
@@ -27,7 +27,8 @@ export function makeRouteMapOverlays(
     return {
       id:route.id,mode:route.mode,
       paths,
-      fidelity:published?.length?'provider_geometry':'illustrative',
+      fidelity:published?.length?(observed?.[route.id]?.calculationSource==='local_ocean_network'?
+        'modeled_geometry':'provider_geometry'):'illustrative',
       from:route.from,to:route.to,via:route.via,
       origin,destination,
       source:published?.length?(observed?.[route.id]?.calculationSource==='local_ocean_network'?
