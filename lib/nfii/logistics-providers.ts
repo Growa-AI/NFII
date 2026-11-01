@@ -1,6 +1,6 @@
 import {getExportHub,QATAR_PORT,type GeoPoint} from './logistics-lanes'
 import type {RouteInputs} from './logistics-screening'
-import {readSeaRouteGeometry,type GeoLine} from './logistics-route-geometry'
+import {readSeaRouteGeometry,matchesRequestedSeaPorts,type GeoLine,type GeoPointTuple} from './logistics-route-geometry'
 import {fetchRoadEvidence,type RoadEvidence} from './logistics-road-api'
 
 type Obj=Record<string,unknown>
@@ -55,8 +55,14 @@ export async function fetchSeaRoutes(country:string):Promise<Pick<ExternalLogist
       if(!result.ok)return null
       const json=await result.json() as unknown
       const parsed=extractSeaRoute(json)
-      return parsed?{id,km:parsed.km,durationDays:parsed.durationDays,geometry:parsed.geometry,
-        routeUrl:'https://developer.searoutes.com/reference/getsearoute'}:null
+      const from:GeoPointTuple=[hub.sea.lat,hub.sea.lon]
+      const to:GeoPointTuple=[QATAR_PORT.lat,QATAR_PORT.lon]
+      const viaPoint:GeoPointTuple|undefined=via==='jebel'?[24.99,55.06]:
+        via==='salalah'?[16.94,54.01]:undefined
+      if(!parsed?.geometry||!matchesRequestedSeaPorts(parsed.geometry,from,to,viaPoint))
+        return null
+      return {id,km:parsed.km,durationDays:parsed.durationDays,geometry:parsed.geometry,
+        routeUrl:'https://developer.searoutes.com/reference/getsearoute'}
     }catch{return null}
   }))
   const records=resolved.filter((r):r is NonNullable<typeof r>=>Boolean(r))
