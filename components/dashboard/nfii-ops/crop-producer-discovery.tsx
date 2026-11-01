@@ -14,7 +14,7 @@ import {
 } from '@/lib/nfii/crop-producer-directory'
 
 type CropResult={
-  provider:'fairtsa-excerpt'
+  provider:'crop-sector-directory'
   commodity:string
   country:string
   excerptCheckedOn:string
@@ -24,11 +24,15 @@ type CropResult={
   liveCertificateVerified:false
   note:string
   sourceCoverage:Record<string,number>
+  sourceCount:number
+  countryCount:number
+  evidenceBreakdown:Record<string,number>
 }
 
 const SEARCH_COUNTRIES=[
   ['','All countries'],['IN','India'],['TH','Thailand'],
   ['TR','Türkiye'],['QA','Qatar'],['EG','Egypt'],
+  ['AU','Australia'],['ZA','South Africa'],
   ['PK','Pakistan'],['BR','Brazil'],['NL','Netherlands'],
   ['ES','Spain'],['IT','Italy'],['SA','Saudi Arabia'],
 ] as const
@@ -44,6 +48,7 @@ export function CropProducerDiscovery({organizationId}:{organizationId:string|nu
   const [error,setError]=useState('')
   const [shortlist,setShortlist]=useState<CropProducerEvidence[]>([])
   const [copyStatus,setCopyStatus]=useState('')
+  const [visibleCount,setVisibleCount]=useState(20)
   const controller=useRef<AbortController|null>(null)
 
   const invalidate=()=>{
@@ -53,6 +58,7 @@ export function CropProducerDiscovery({organizationId}:{organizationId:string|nu
     setError('')
     setData(null)
     setCopyStatus('')
+    setVisibleCount(20)
   }
 
   const search=async(event:FormEvent<HTMLFormElement>)=>{
@@ -71,7 +77,7 @@ export function CropProducerDiscovery({organizationId}:{organizationId:string|nu
       })
       const body=await response.json() as CropResult & {error?:string}
       if(!response.ok)throw Error(body.error??'Source cannot be consulted')
-      if(body.provider!=='fairtsa-excerpt'||body.commodity!==crop)
+      if(body.provider!=='crop-sector-directory'||body.commodity!==crop)
         throw Error('Unexpected registry response')
       if(!abort.signal.aborted)setData(body)
     }catch(reason){
@@ -86,21 +92,21 @@ export function CropProducerDiscovery({organizationId}:{organizationId:string|nu
   }
 
   const toggle=(record:CropProducerEvidence)=>{
-    const key=record.recordId+':'+record.organizationName
-    setShortlist(items=>items.some(x=>x.recordId+':'+x.organizationName===key)
-      ?items.filter(x=>x.recordId+':'+x.organizationName!==key)
-      :items.length>=30?items:[...items,record])
+    const key=record.sourceUrl+':'+record.recordId+':'+record.organizationName
+    setShortlist(items=>items.some(x=>x.sourceUrl+':'+x.recordId+':'+x.organizationName===key)
+      ?items.filter(x=>x.sourceUrl+':'+x.recordId+':'+x.organizationName!==key)
+      :items.length>=250?items:[...items,record])
     setCopyStatus('')
   }
 
   const copy=async()=>{
     if(!shortlist.length)return
     const rows=[
-      ['Organization','Product listed','Country','Certifier',
+      ['Organization','Crop / sector evidence','Country','Evidence type',
         'Registry reference','Registry source','Status'],
       ...shortlist.map(record=>[
         record.organizationName,record.matchedProduct,
-        record.countryName,record.certifier,record.recordId,
+        record.countryName,record.evidenceType,record.recordId,
         record.sourceUrl,'Current certificate and grower role NOT verified',
       ]),
     ]
@@ -130,13 +136,13 @@ export function CropProducerDiscovery({organizationId}:{organizationId:string|nu
               'البحث عن مؤسسات مرتبطة بمحصول')}
           </h2>
           <p className="mt-1 max-w-[84ch] text-[12px] leading-relaxed text-content-soft">
-            {tx('Select a crop, not a company name. Results below are real names transcribed from a public certification-product directory, with the exact product, country, certifier and original record reference.',
+            {tx('Select a crop, not a company name. Discover documented leads from published crop associations, product certificates, dairy listings and dates registries. Each result links to its original source.',
               'اختر المحصول وليس اسم شركة. الأسماء مأخوذة من دليل علني لمنتجات الاعتماد، مع المنتج والدولة وجهة التصديق والمرجع الأصلي.')}
           </p>
         </div>
       </div>
       <span className="rounded-full border border-warning-line bg-warning-soft px-3 py-1.5 text-[10px] font-medium text-warning-strong">
-        {tx('LIMITED PUBLISHED EXCERPT · NOT LIVE','مقتطف منشور محدود · غير مباشر')}
+        {tx('MULTI-SOURCE DIRECTORY · NOT LIVE','مقتطف منشور محدود · غير مباشر')}
       </span>
     </div>
 
@@ -171,7 +177,7 @@ export function CropProducerDiscovery({organizationId}:{organizationId:string|nu
 
     <p className="flex items-start gap-2 text-[11px] leading-relaxed text-content-soft">
       <ShieldAlert className="mt-0.5 h-4 w-4 shrink-0 text-warning-strong"/>
-      {tx('A product listed in a certification directory does not prove that this organization itself grows the crop, has an active certificate today, can export to Qatar, or has stock for sale. Treat results as evidence-backed leads requiring independent checks.',
+      {tx('Association membership, a product certificate, a dates mark or a published price list are different types of evidence. None independently confirms own-farm production, current export permissions, certification, stock or availability. Treat every record as an unqualified sourcing lead.',
         'وجود المنتج في دليل الاعتماد لا يعني أن المؤسسة تزرعه بنفسها أو أن الشهادة سارية أو يمكنها التصدير إلى قطر أو لديها مخزون للبيع. جميع النتائج مرشحون يحتاجون تحققاً مستقلاً.')}
     </p>
 
@@ -189,15 +195,18 @@ export function CropProducerDiscovery({organizationId}:{organizationId:string|nu
       <div className="flex flex-wrap items-center justify-between gap-2 border-b border-line pb-3">
         <div>
           <p className="text-[13px] font-medium text-content">
-            {tx('Documented organization–product matches','مطابقات المؤسسة والمنتج الموثقة')}
+            {tx('Published crop-sector sourcing leads','مطابقات المؤسسة والمنتج الموثقة')}
             <span className="ms-2 rounded-full border border-line bg-muted px-2 py-0.5 text-[11px] tabular-nums text-content">
               {data.results.length}
             </span>
           </p>
+          <p className="mt-1 text-[11px] text-content-soft">
+            {data.countryCount} {tx('countries','دول')} · {data.sourceCount} {tx('source documents','مصادر')}
+          </p>
           <p className="mt-1 text-[10px] text-content-soft">
-            {tx('Source: FairTSA · excerpt checked ','المصدر: FairTSA · تاريخ الاطلاع ')}
+            {tx('Multiple published sources · directory reviewed ','مصادر منشورة متعددة · تاريخ المراجعة ')}
             {data.excerptCheckedOn}
-            {tx(' · not a complete world inventory',' · ليست قاعدة بيانات عالمية شاملة')}
+            {tx(' · historical evidence, not live verification',' · بيانات تاريخية وليست تحققاً مباشراً')}
           </p>
         </div>
         <a href={data.sourceUrl} target="_blank" rel="noopener noreferrer"
@@ -209,13 +218,13 @@ export function CropProducerDiscovery({organizationId}:{organizationId:string|nu
 
       {data.results.length>0?(
         <div className="grid gap-3 xl:grid-cols-2">
-          {data.results.map(record=>{
+          {data.results.slice(0,visibleCount).map(record=>{
             const chosen=shortlist.some(x=>x.recordId===record.recordId&&
-              x.organizationName===record.organizationName)
-            return <article key={record.organizationName+record.recordId}
+              x.sourceUrl===record.sourceUrl&&x.organizationName===record.organizationName)
+            return <article key={record.sourceUrl+record.recordId}
               className="rounded-lg border border-line bg-background p-4">
               <p className="text-[10px] font-semibold uppercase tracking-[.08em] text-sage-700">
-                {tx('PRODUCT REPORTED IN REGISTRY','منتج مدرج في السجل')}
+                {tx('DOCUMENTED CROP / SECTOR LINK','ارتباط موثق بالمحصول / القطاع')}
               </p>
               <h3 className="mt-1 text-[15px] font-medium text-content">
                 {record.organizationName}
@@ -224,8 +233,9 @@ export function CropProducerDiscovery({organizationId}:{organizationId:string|nu
                 {[
                   [tx('Product listed','المنتج المدرج'),record.matchedProduct],
                   [tx('Country','الدولة'),record.countryName],
-                  [tx('Certifying body listed','جهة التصديق المدرجة'),record.certifier],
+                  [tx('Evidence type','نوع الدليل'),record.evidenceType.replaceAll('_',' ')],
                   [tx('Directory ID','معرف الدليل'),record.recordId],
+                  [tx('Publisher','الناشر'),record.sourceName],
                 ].map(([label,value])=>(
                   <div key={label} className="min-w-0">
                     <p className="text-[10px] text-content-soft">{label}</p>
@@ -234,7 +244,7 @@ export function CropProducerDiscovery({organizationId}:{organizationId:string|nu
                 ))}
               </div>
               <div className="mt-3 rounded-lg border border-warning-line bg-warning-soft p-2.5 text-[11px] text-content">
-                {tx('Grower role: NOT independently confirmed · Active certificate: NOT rechecked · Export/stock: UNKNOWN',
+                {tx('Grower role: NOT independently confirmed · Certification varies by source · Export/stock: UNKNOWN',
                   'صفة المزارع: غير مثبتة · سريان الشهادة: غير مفحوص · التصدير والمخزون: غير معروف')}
               </div>
               <div className="mt-3 flex flex-wrap items-center gap-2">
@@ -254,14 +264,20 @@ export function CropProducerDiscovery({organizationId}:{organizationId:string|nu
               </div>
             </article>
           })}
+          {data.results.length>visibleCount&&<div className="col-span-full text-center">
+            <button type="button" onClick={()=>setVisibleCount(count=>count+30)}
+              className="nfii-button min-h-10 px-5">
+              {tx('Show more documented leads','عرض المزيد من الجهات')} ({data.results.length-visibleCount})
+            </button>
+          </div>}
         </div>
       ):(
         <div className="rounded-lg border border-line bg-background p-4">
           <p className="text-[13px] font-medium text-content">
-            {tx('No documented match in this limited excerpt','لا توجد مطابقة في هذا المقتطف المحدود')}
+            {tx('No published crop match in the current directory','لا توجد مطابقة في هذا المقتطف المحدود')}
           </p>
           <p className="mt-1 text-[12px] text-content-soft">
-            {tx('This does NOT mean that producers for this crop do not exist. Consult the wider official directories below. NFII will not invent company names to fill the gap.',
+            {tx('No match is not proof that producers do not exist. Check the broader official databases below; NFII does not invent suppliers.',
               'هذا لا يعني عدم وجود منتجين للمحصول. راجع الأدلة الرسمية الأوسع أدناه. لن يُنشئ النظام أسماء شركات وهمية لسد النقص.')}
           </p>
         </div>
@@ -296,7 +312,7 @@ export function CropProducerDiscovery({organizationId}:{organizationId:string|nu
         {tx('Broader official certification searches','البحث الأوسع في سجلات الاعتماد الرسمية')}
       </h3>
       <p className="mt-1 text-[11px] leading-relaxed text-content-soft">
-        {tx('The bundled excerpt has limited coverage. These two registries provide broader product-level evidence, but their crop filters and full datasets are not yet connected through an NFII API.',
+        {tx('This directory remains a curated snapshot. These two services can provide additional product-level evidence; their full datasets are not connected to the NFII API.',
           'تغطية هذا المقتطف محدودة. تقدم السجلات التالية بيانات أوسع عن المنتجات، لكن البحث الكامل فيها لم يُدمج عبر API في NFII بعد.')}
       </p>
       <div className="mt-3 grid gap-2 md:grid-cols-2">
