@@ -1,6 +1,6 @@
 import {describe,expect,it} from 'vitest'
 import {readSeaRouteGeometry,splitAtDateline} from './logistics-route-geometry'
-import {makeRouteMapOverlays} from './logistics-route-map'
+import {makeRouteMapOverlays,previewRouteMapOverlays} from './logistics-route-map'
 import {buildScreenedRoutes} from './logistics-screening'
 import {readFileSync} from 'node:fs'
 import {join} from 'node:path'
@@ -51,9 +51,17 @@ describe('Interactive food import routes on a real map',()=>{
     expect(routed.find(x=>x.id==='sea_direct')?.paths[0][0]).toEqual([18.95,72.95])
     expect(routed.every(x=>x.destination[0]>24)).toBe(true)
   })
+  it('shows unverified map preview before an API assessment',()=>{
+    const preliminary=previewRouteMapOverlays('IN')
+    expect(preliminary.some(x=>x.id==='sea_direct')).toBe(true)
+    expect(preliminary.some(x=>x.id==='air_direct')).toBe(true)
+    expect(preliminary.every(x=>x.fidelity==='illustrative')).toBe(true)
+    expect(previewRouteMapOverlays('XX')).toEqual([])
+  })
   it('wires map selection to details while preserving source distinctions',()=>{
     expect(api).toContain('mapRoutes:makeRouteMapOverlays')
     expect(ui).toContain('<LogisticsRouteMap')
+    expect(ui).toContain('previewRouteMapOverlays(country)')
     expect(ui).toContain('onSelect={id=>setSelected(id)}')
     expect(map).toContain("void import('leaflet')")
     expect(map).toContain('fitBounds')
