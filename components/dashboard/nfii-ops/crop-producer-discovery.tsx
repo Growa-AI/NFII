@@ -28,7 +28,10 @@ type CropResult={
   sourceCount:number
   countryCount:number
   evidenceBreakdown:Record<string,number>
-  research:'curated'|'mapped'|'places'
+  research:'curated'|'mapped'|'expanded'|'places'
+  cropTaggedCount:number
+  agriculturalCandidateCount:number
+  countryHasDocumentedCropMatches:boolean
   researchStatus:'not_requested'|'available'|'no_matches'|'not_configured'|'unavailable'
   researchMessage:string
   documentedCount:number
@@ -43,7 +46,7 @@ export function CropProducerDiscovery({organizationId}:{organizationId:string|nu
   const [crop,setCrop]=useState('rice')
   const [country,setCountry]=useState('')
   const [feasibleCountries,setFeasibleCountries]=useState<FeasibleCropCountry[]>([])
-  const [research,setResearch]=useState<'curated'|'mapped'|'places'>('mapped')
+  const [research,setResearch]=useState<'curated'|'mapped'|'expanded'|'places'>('expanded')
   const [data,setData]=useState<CropResult|null>(null)
   const [queryLoading,setQueryLoading]=useState(false)
   const [error,setError]=useState('')
@@ -195,16 +198,20 @@ export function CropProducerDiscovery({organizationId}:{organizationId:string|nu
       <label className="flex min-w-0 flex-1 items-center gap-2">
         <span className="shrink-0 text-[11px] text-content-soft">{tx('3. Search source','٣. مصدر البحث')}</span>
         <select className="nfii-input min-h-10" value={research}
-          onChange={event=>{invalidate();setResearch(event.target.value as 'curated'|'mapped'|'places')}}>
-          <option value="mapped">{tx('Published leads + free mapped crop locations','جهات منشورة + مواقع المحاصيل المفتوحة')}</option>
+          onChange={event=>{invalidate();setResearch(event.target.value as 'curated'|'mapped'|'expanded'|'places')}}>
+          <option value="expanded">{tx('Broad free search: crops + mapped farms','بحث مجاني موسع: محاصيل ومزارع')}</option>
+          <option value="mapped">{tx('Strict crop-tagged map locations only','مواقع بخريطة تحمل تسمية المحصول فقط')}</option>
           <option value="curated">{tx('Published source listings only','السجلات المنشورة فقط')}</option>
           <option value="places">{tx('Published leads + Google Places (paid)','جهات منشورة + جوجل المدفوع')}</option>
         </select>
       </label>
       <p className="w-full text-[11px] text-content-soft">
-        {research==='mapped'?
-          tx('Free OpenStreetMap search uses explicit crop tags on named locations; those are not verified companies.',
-            'البحث في خرائط مفتوحة عن مواقع زراعية مسماة؛ ليست شركات تم التحقق منها.'):
+        {research==='expanded'?
+          tx('Search mapped crop-tagged sites PLUS named farms/greenhouses when supplier directories are sparse. Generic mapped farms have NOT been confirmed for the selected crop.',
+            'يبحث عن مواقع المحصول والمزارع المسماة. المحصول المختار غير مؤكد للمزارع العامة.'):
+        research==='mapped'?
+          tx('Strict mapping requires an explicit crop tag on a named site; very few farms have one.',
+            'يتطلب البحث الدقيق وسم المحصول نفسه، لذلك قد تكون النتائج قليلة.'):
         research==='places'?
           tx('Google Places uses paid, server-side billing and requires a selected country and authorized organization. Keyword matches are unverified.',
             'يتطلب بحث جوجل المدفوع دولة محددة ومؤسسة مخولة. نتائج الكلمات المفتاحية غير محققة.'):
@@ -254,6 +261,37 @@ export function CropProducerDiscovery({organizationId}:{organizationId:string|nu
         </a>
       </div>
 
+      <div className="grid grid-cols-2 gap-2 md:grid-cols-3">
+        {[
+          {name:tx('Published crop evidence','أدلة المحصول المنشورة'),
+            count:data.documentedCount},
+          {name:tx('Mapped crop tags','مواقع المحصول على الخريطة'),
+            count:data.cropTaggedCount??0},
+          {name:tx('Other agricultural candidates · crop unverified','مرشحون زراعيون غير مؤكدين للمحصول'),
+            count:data.agriculturalCandidateCount??0},
+        ].map(stat=><div key={stat.name}
+          className="rounded-lg border border-line bg-muted/20 p-3">
+          <p className="text-[10px] text-content-soft">{stat.name}</p>
+          <strong className="mt-1 block text-[20px] font-medium tabular-nums text-content">
+            {stat.count}
+          </strong>
+        </div>)}
+      </div>
+      {data.country&&!data.countryHasDocumentedCropMatches&&
+        <p className="rounded-lg border border-warning-line bg-warning-soft p-3 text-[11px] leading-relaxed text-content">
+          {tx('No source-verified crop-company match in this country. The wider agricultural results below are only exploratory locations. Request original product and business evidence before qualifying any supplier.',
+            'لا يوجد تطابق مؤكد بين شركة ومحصول في هذا البلد. المواقع الزراعية التالية للبحث فقط ولا تثبت إنتاج المحصول.')}
+        </p>}
+      {data.researchStatus==='unavailable'&&
+        <p role="status" className="rounded-lg border border-warning-line bg-warning-soft p-3 text-[11px] text-content">
+          {tx('The free live map source did not respond. Published companies remain available. Try the paid business provider if configured, or consult the independent registers below.',
+            'مصدر الخرائط المجاني لم يستجب. الشركات الموثقة لا تزال متاحة.')}
+        </p>}
+      {data.researchStatus==='no_matches'&&
+        <p role="status" className="rounded-lg border border-line bg-muted/20 p-3 text-[11px] text-content-soft">
+          {tx('No matching named agricultural locations were available in this map source. This is not evidence that the country has no farms.',
+            'لم تتوفر مواقع زراعية مسماة مطابقة في مصدر الخريطة. هذا لا يعني عدم وجود مزارع.')}
+        </p>}
       <div className="flex flex-wrap items-center gap-3 text-[12px]">
         <label className="inline-flex items-center gap-2"><span className="text-content-soft">{tx('Supplier role','نوع المورد')}</span>
           <select aria-label={tx('Supplier role','نوع المورد')} className="nfii-input min-h-9" value={roleFilter}
@@ -276,6 +314,7 @@ export function CropProducerDiscovery({organizationId}:{organizationId:string|nu
               <p className="text-[10px] font-semibold uppercase tracking-[.08em] text-sage-700">
                 {tx(record.evidenceType==='keyword_business_listing'?'KEYWORD BUSINESS LEAD · PRODUCT UNVERIFIED':
                   record.evidenceType==='community_mapped_crop_tag'?'COMMUNITY-MAPPED CROP LOCATION · COMPANY UNVERIFIED':
+                  record.evidenceType==='mapped_agricultural_business'?'MAPPED FARM / BUSINESS · CROP NOT VERIFIED':
                   'DOCUMENTED CROP / SECTOR LINK','ارتباط بالمحصول / القطاع مع مصدر')}
               </p>
               <h3 className="mt-1 text-[15px] font-medium text-content">
@@ -298,7 +337,9 @@ export function CropProducerDiscovery({organizationId}:{organizationId:string|nu
               </div>
               {record.evidenceSummary&&<p className="mt-3 rounded-md border border-line bg-muted/20 p-2 text-[11px] text-content-soft">{record.evidenceSummary}</p>}
               <div className="mt-3 rounded-lg border border-warning-line bg-warning-soft p-2.5 text-[11px] text-content">
-                {tx('Grower role: NOT independently confirmed · Certification varies by source · Export/stock: UNKNOWN',
+                {tx(record.evidenceType==='mapped_agricultural_business'?
+                  'Selected crop: NOT VERIFIED · Farm/business identity: NOT VERIFIED · Export/stock: UNKNOWN':
+                  'Grower role: NOT independently confirmed · Certification varies by source · Export/stock: UNKNOWN',
                   'صفة المزارع: غير مثبتة · سريان الشهادة: غير مفحوص · التصدير والمخزون: غير معروف')}
               </div>
               <div className="mt-3 flex flex-wrap items-center gap-2">
