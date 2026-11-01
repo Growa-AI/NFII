@@ -50,7 +50,7 @@ describe('External freight and road routing APIs',()=>{
     expect(api).toContain('fetchFreightEstimate')
     expect(api).toContain('roadDistanceKm:evidence.roadRoute?.distanceKm')
     expect(ui).toContain('Freightos marketplace freight benchmark')
-    expect(ui).toContain('non-binding')
+    expect(ui).toContain('Non-binding')
     expect(provider).toContain('customer-marine-api.open-meteo.com')
     expect(provider).toContain('fetchRoadEvidence')
     expect(api).toContain('hasSupplierInOrigin')
