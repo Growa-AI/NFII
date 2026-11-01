@@ -15,6 +15,7 @@
 
 import {resolveCommodity} from '@/lib/platform/commodity-catalog'
 import {ADDITIONAL_CROP_LISTINGS, type CropSourceEvidenceType} from './crop-producer-associations'
+import {QATAR_NAMED_PROSPECTS} from './qatar-crop-suppliers'
 
 export const FAIRTSA_REGISTRY_URL='https://www.fairtsa.org/products'
 export const USDA_ORGANIC_REGISTRY_URL='https://organic.ams.usda.gov/integrity/'
@@ -39,6 +40,8 @@ export interface CropProducerEvidence {
   exportCapabilityConfirmed:false
   capacityTonnes:null
   supplierApproved:false
+  supplierRole?:'farm_claim'|'farm_other'|'manufacturer'|'trader'
+  evidenceSummary?:string
 }
 
 /**
@@ -121,7 +124,7 @@ export function findDocumentedCropOrganizations(
       exportCapabilityConfirmed:false as const,capacityTonnes:null,supplierApproved:false as const,
     }]
   })
-  const additional:CropProducerEvidence[]=ADDITIONAL_CROP_LISTINGS
+  const additional:CropProducerEvidence[]=[...ADDITIONAL_CROP_LISTINGS,...QATAR_NAMED_PROSPECTS]
     .filter(row=>row.commodityId===crop.id&&
       (!allowedCountry||row.countryCode===allowedCountry))
     .map(row=>({
@@ -134,7 +137,10 @@ export function findDocumentedCropOrganizations(
   // explicit product evidence. Country is part of the identity key.
   const priority=(r:CropProducerEvidence)=>
     r.evidenceType==='product_listed_in_certification_directory'?4:
-    r.evidenceType==='company_product_document'?3:1
+    r.evidenceType==='company_product_document'?3:
+    r.evidenceType==='farm_own_crop_claim'?3:
+    r.evidenceType==='government_or_institutional_crop_profile'?3:
+    r.evidenceType==='farm_product_catalogue'?2:1
   const normalized=(name:string)=>name.toLocaleLowerCase('en')
     .normalize('NFKD').replace(/[^a-z0-9]/g,'')
     .replace(/(?:private|limited|company|ltd|pvt|co)$/g,'')
