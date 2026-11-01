@@ -66,7 +66,7 @@ describe('Qatar procurement origin prices in QAR/kg',()=>{
         importValueUsd:1000,importWeightKg:90,estimatedNetWeight:false}]}
     const old:YearObservation={year:2024,sourceUrl:'https://example.com/24',
       incompletePreview:false,partners:[{countryCode:'EG',countryName:'Egypt',
-        importValueUsd:500000,importWeightKg:200000,estimatedNetWeight:false}]}
+        importValueUsd:500000,importWeightKg:2000000,estimatedNetWeight:false}]}
     expect(rankQatarImportOrigins('wheat',[tiny,old]).analyzedYear).toBe(2024)
     const empty=rankQatarImportOrigins('milk',[])
     expect(empty.weightedAverageQarKg).toBeNull()
