@@ -82,7 +82,7 @@ export type YearObservation={
 
 const MIN_TONNES:Record<string,number>={
   tomato:10,cucumber:10,pepper:10,lettuce:10,
-  date:20,milk:20,rice:100,wheat:100,barley:100,
+  date:20,milk:20,rice:1000,wheat:1000,barley:1000,
 }
 const MIN_USD=10000
 const MAX_ORIGINS=12
