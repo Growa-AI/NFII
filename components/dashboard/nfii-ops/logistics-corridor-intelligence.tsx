@@ -4,9 +4,10 @@ import {useEffect,useRef,useState,type FormEvent} from 'react'
 import {BarChart3,ExternalLink,Globe2,Loader2,
   Route as RouteIcon,ShieldAlert} from 'lucide-react'
 import {COMMODITY_CATALOG} from '@/lib/platform/commodity-catalog'
-import {HUB_COUNTRIES,CARGO_SPECS} from '@/lib/nfii/logistics-lanes'
+import {CARGO_SPECS,getExportHub} from '@/lib/nfii/logistics-lanes'
 import type {ScreenedRoute} from '@/lib/nfii/logistics-screening'
 import type {OperationsSnapshot} from '@/lib/nfii/operations-types'
+import type {SupplierOriginReport,SupplierOriginScope,SupplierOrigin} from '@/lib/nfii/logistics-supplier-origins'
 import {useI18n} from '@/lib/i18n'
 
 type ModelResponse={
@@ -27,16 +28,21 @@ const color=(band:string)=>band==='high'?'bg-critical':band==='elevated'?
 type ShipmentChoice={id:string;title:string;country:string;commodity:string;tonnes:number}
 
 export function LogisticsCorridorIntelligence({
-  organizationId,operations,
+  organizationId,operations,isPreview,
 }:{
   organizationId:string|null
   operations:OperationsSnapshot
+  isPreview:boolean
 }){
   const {locale}=useI18n()
   const ar=locale==='ar'
   const tx=(en:string,arabic:string)=>ar?arabic:en
   const [crop,setCrop]=useState('rice')
-  const [country,setCountry]=useState('IN')
+  const [country,setCountry]=useState('')
+  const [scope,setScope]=useState<SupplierOriginScope>('documented')
+  const [originReport,setOriginReport]=useState<SupplierOriginReport|null>(null)
+  const [originsLoading,setOriginsLoading]=useState(false)
+  const [originError,setOriginError]=useState('')
   const [tonnes,setTonnes]=useState('20')
   const [deadline,setDeadline]=useState('60')
   const [seaRate,setSeaRate]=useState('')
@@ -48,22 +54,53 @@ export function LogisticsCorridorIntelligence({
   const [selected,setSelected]=useState<string|null>(null)
   const current=useRef<AbortController|null>(null)
   const [orderId,setOrderId]=useState('')
-  const orders:ShipmentChoice[]=operations.purchaseOrders
+  const orders:ShipmentChoice[]=(isPreview?[]:operations.purchaseOrders)
     .filter(order=>order.status==='approved').flatMap(order=>{
       const contract=operations.contracts.find(c=>c.id===order.contract_id)
       const supplier=operations.suppliers.find(s=>s.id===contract?.supplier_id)
       if(!contract||!supplier||!contract.commodity_code||
         !CARGO_SPECS[contract.commodity_code]||
-        !HUB_COUNTRIES.some(item=>item.countryCode===supplier.country_code))return []
+        !getExportHub(supplier.country_code??''))return []
       return [{id:order.id,title:order.order_ref??order.id.slice(0,8),
         country:supplier.country_code!,commodity:contract.commodity_code,
         tonnes:Number(order.ordered_tonnes??0)}]
     })
     .filter(o=>o.tonnes>0&&o.tonnes<=200)
 
+  const eligible:SupplierOrigin[]=(originReport?.countries??[]).filter(row=>
+    row.logisticHubAvailable&&row.countryCode!=='QA'&&
+    (scope==='approved'?row.approvedCount>0:row.documentedCount>0))
+  const unsupported=(originReport?.countries??[]).filter(row=>
+    row.countryCode!=='QA'&&!row.logisticHubAvailable&&
+    (scope==='approved'?row.approvedCount>0:row.documentedCount>0))
   useEffect(()=>{
-    return ()=>current.current?.abort()
-  },[])
+    const controller=new AbortController()
+    setOriginReport(null)
+    setOriginsLoading(true)
+    setOriginError('')
+    const params=new URLSearchParams({commodity:crop,
+      ...(organizationId?{organizationId}:{})})
+    void fetch('/api/nfii/logistics/supplier-origins?'+params,{
+      signal:controller.signal,cache:'no-store',
+    }).then(async response=>{
+      const body=await response.json() as SupplierOriginReport&{error?:string}
+      if(!response.ok)throw Error(body.error??'Supplier-country source unavailable')
+      if(controller.signal.aborted)return
+      setOriginReport(body)
+      const available=body.countries.filter(row=>row.logisticHubAvailable&&
+        row.countryCode!=='QA'&&
+        (scope==='approved'?row.approvedCount>0:row.documentedCount>0))
+      setCountry(previous=>available.some(x=>x.countryCode===previous)?
+        previous:available[0]?.countryCode??'')
+    }).catch(e=>{
+      if(controller.signal.aborted)return
+      setCountry('')
+      setOriginError(e instanceof Error?e.message:'Supplier source unavailable')
+    }).finally(()=>{if(!controller.signal.aborted)setOriginsLoading(false)})
+    return ()=>controller.abort()
+  },[crop,organizationId,scope])
+
+  useEffect(()=>()=>current.current?.abort(),[])
   const clear=()=>{
     current.current?.abort()
     current.current=null
@@ -71,12 +108,16 @@ export function LogisticsCorridorIntelligence({
   }
   const submit=async(e:FormEvent<HTMLFormElement>)=>{
     e.preventDefault()
+    if(originsLoading||!eligible.some(row=>row.countryCode===country)){
+      setError('No eligible crop-specific supplier in the chosen country.')
+      return
+    }
     clear()
     const controller=new AbortController()
     current.current=controller
     setBusy(true)
     const params=new URLSearchParams({
-      commodity:crop,country,tonnes,limitDays:deadline,
+      commodity:crop,country,tonnes,limitDays:deadline,supplierScope:scope,
       ...(organizationId?{organizationId}:{}),
       ...(seaRate?{seaRate}:{}),...(airRate?{airRate}:{}),
       ...(roadRate?{roadRate}:{}),
@@ -121,7 +162,7 @@ export function LogisticsCorridorIntelligence({
         <select className="nfii-input" value={orderId} onChange={e=>{
           const value=e.target.value,set=orders.find(x=>x.id===value)
           setOrderId(value)
-          if(set){setCrop(set.commodity);setCountry(set.country);setTonnes(String(set.tonnes));
+          if(set){setScope('approved');setCrop(set.commodity);setCountry(set.country);setTonnes(String(set.tonnes));
             setDeadline(String(CARGO_SPECS[set.commodity]?.maxTransitDays??15))}
           clear()
         }}>
@@ -131,19 +172,66 @@ export function LogisticsCorridorIntelligence({
           </option>)}
         </select>
       </label>}
+      <div className="rounded-lg border border-line-accent bg-cream-100/20 p-3 space-y-2">
+        <label className="flex flex-wrap items-center gap-2 text-[12px] text-content">
+          <strong>{tx('Supplier source','مصدر الموردين')}</strong>
+          <select className="nfii-input min-h-9" value={scope}
+            onChange={e=>{
+              setScope(e.target.value as SupplierOriginScope)
+              setCountry('');setOrderId('');clear()
+            }}>
+            <option value="documented">{tx('Find Suppliers · crop-specific published candidates','مرشحون منشورون للمحصول')}</option>
+            <option value="approved" disabled={!organizationId||isPreview}>
+              {tx('Approved suppliers · approved current crop contracts','موردون معتمدون بعقود سارية')}
+            </option>
+          </select>
+        </label>
+        <p className="text-[11px] text-content-soft">
+          {tx('Only countries with crop-specific supplier records are available. Historic Qatar imports or a port are not proof of an available supplier.',
+            'تظهر فقط الدول التي تحتوي على موردين مرتبطين بالمحصول.')}
+        </p>
+        {originsLoading&&<p role="status" className="text-[11px] text-content-soft">
+          {tx('Loading supplier countries…','تحميل دول الموردين…')}
+        </p>}
+        {originError&&<p role="alert" className="text-[11px] text-critical">{originError}</p>}
+        {!originsLoading&&!originError&&scope==='approved'&&
+          originReport?.sources.approvedLedger==='unavailable'&&
+          <p role="alert" className="text-[11px] text-critical">
+            {tx('Approved register is unavailable or incomplete; supplier count is unknown.',
+              'سجل الموردين المعتمدين غير متاح أو غير مكتمل.')}
+          </p>}
+        {!originsLoading&&!originError&&!eligible.length&&<p role="status"
+          className="text-[11px] text-warning-strong">
+          {tx('No supported countries have matching suppliers for this crop. Find suppliers or approve a matching crop contract in Procurement.',
+            'لا توجد دول بها موردون مطابقون. ابحث عن موردين أو اعتمد عقداً مطابقاً.')}
+        </p>}
+        {unsupported.length>0&&<p className="text-[11px] text-content-soft">
+          {tx('Supplier origins without configured logistics gateways: ','دول بها موردون دون بوابة شحن: ')}
+          {unsupported.map(x=>x.countryName).join(', ')}
+        </p>}
+        {originReport?.localQatar&&<p className="text-[11px] text-content-soft">
+          {tx('Qatar-based suppliers require domestic delivery planning, not international import routes.',
+            'موردو قطر يحتاجون إلى تخطيط تسليم محلي وليس مسار استيراد دولي.')}
+        </p>}
+      </div>
       <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
         <label className="space-y-1"><span className="nfii-label">{tx('Food product','المنتج الغذائي')}</span>
           <select className="nfii-input" value={crop} onChange={e=>{
-            setCrop(e.target.value);setDeadline(String(CARGO_SPECS[e.target.value]?.maxTransitDays??15));
+            setCrop(e.target.value);setCountry('');setDeadline(String(CARGO_SPECS[e.target.value]?.maxTransitDays??15));
             setOrderId('');clear()}}>
             {COMMODITY_CATALOG.filter(item=>Boolean(CARGO_SPECS[item.id])).map(item=>
               <option key={item.id} value={item.id}>{ar?item.nameAr:item.name}</option>)}
           </select></label>
-        <label className="space-y-1"><span className="nfii-label">{tx('Export origin','بلد المنشأ')}</span>
-          <select className="nfii-input" value={country} onChange={e=>{
-            setCountry(e.target.value);setOrderId('');clear()}}>
-            {HUB_COUNTRIES.map(item=><option key={item.countryCode} value={item.countryCode}>
-              {item.countryName}
+        <label className="space-y-1"><span className="nfii-label">
+          {tx('Countries with matching crop suppliers','دول بها موردون للمحصول')}
+        </span>
+          <select className="nfii-input" value={country}
+            disabled={originsLoading||eligible.length===0}
+            onChange={e=>{setCountry(e.target.value);setOrderId('');clear()}}>
+            {!eligible.length&&<option value="">{tx('No supplier-supported origins','لا توجد دول مدعومة بموردين')}</option>}
+            {eligible.map(row=><option key={row.countryCode} value={row.countryCode}>
+              {row.countryName} · {scope==='approved'?row.approvedCount:row.documentedCount}
+              {' '}{tx('suppliers','موردون')}
             </option>)}
           </select></label>
         <label className="space-y-1"><span className="nfii-label">{tx('Shipment tonnes','طن الشحنة')}</span>
@@ -176,7 +264,7 @@ export function LogisticsCorridorIntelligence({
             </label>)}
         </div>
       </div>
-      <button type="submit" disabled={busy}
+      <button type="submit" disabled={busy||originsLoading||Boolean(originError)||!country||!eligible.length}
         className="nfii-button inline-flex min-h-10 items-center gap-2">
         {busy?<Loader2 className="h-4 w-4 animate-spin"/>:<BarChart3 className="h-4 w-4"/>}
         {busy?tx('Evaluating corridors…','جارٍ تقييم المسارات…'):
