@@ -10,6 +10,7 @@ import {
 import { PageHeader } from '@/components/brand/layout'
 import { FoodSourceIntake } from '@/components/dashboard/food-source-intake'
 import { CommodityAgentLab } from '@/components/dashboard/commodity-agent-lab'
+import { CommodityBalanceCharts } from '@/components/dashboard/commodity-balance-charts'
 import { useOperationalContext } from '@/contexts/operational-context-provider'
 import { useCommodityCase } from '@/hooks/use-commodity-case'
 import { useI18n } from '@/lib/i18n'
@@ -276,6 +277,8 @@ export function CommodityWorkspace(){
                 'قد يكون الرصيد الصافي سالباً. لا ينخفض المخزون المتاح عن الصفر؛ يُسجل الفرق كعجز. أيام التغطية تقيس مخزون نهاية الفترة ولا تحدد أول يوم قد يحدث فيه نقص.')}
             </p>
           </section>
+
+          <CommodityBalanceCharts balance={balance}/>
 
           <div className="grid gap-4 xl:grid-cols-[minmax(0,1.35fr)_minmax(290px,.7fr)]">
             <section className="rounded-xl border border-line bg-card p-4 md:p-5">

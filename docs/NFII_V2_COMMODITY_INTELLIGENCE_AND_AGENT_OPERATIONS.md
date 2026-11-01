@@ -170,3 +170,47 @@ or certify food security. These distinctions are enforced in unit tests.
 
 This is a transparent, deterministic recommendation engine that **simulates**
 specialist coordination; it is not a real multi-agent LLM execution service.
+
+
+## Visual charts (Growa design system, no new dependencies)
+
+All visuals read **existing NFII model output**. No API endpoints, tables, data
+imports or chart library were added. The visual palette uses
+\`--growa-ink\`, \`--growa-sage\`, warm-stone/cream neutrals and the existing
+critical status token. Charts have descriptive accessible labels and nearby
+text totals, including Arabic labels.
+
+**Commodity Intelligence → Situation & supply chain:**
+- **Supply vs consumption**: two stacked bars at one shared scale. Available
+  opening stock + local production + imports versus consumption + expected
+  losses. Segments display the exact reported quantities in metric tonnes.
+- **Accounting waterfall**: opening stock → production → imports → consumption
+  → losses → net, including negative balances. This is not a daily stock
+  trace, and a negative modeled balance remains separate from usable stock.
+- When a source is incomplete, do not chart it as zero. The empty-state
+  explanation directs users to the missing evidence.
+- Operational shipment, contract and reserve quantities are *not* added to
+  the food-balance charts, preventing reconciliation mistakes.
+
+**Agent operations (both Commodity Intelligence and Watchtower):**
+- After **Run agent sequence**, a segmented **10-stage progress chart**
+  shows completed specialist steps. It never displays final conclusions or
+  risk quantities while the run is in progress.
+- Only after all steps finish, display the executive verdict and two
+  side-by-side charts:
+  - **Baseline vs disrupted net food balance**: diverging horizontal bars,
+    with zero clearly marked, to distinguish stock surplus from shortages.
+  - **Baseline vs disrupted days of coverage**: aligned bullet bars. A
+    dashed 30-day reference is explicitly illustrative, **not** a Qatar
+    government reserve standard.
+- Editing shock sliders or choosing another commodity, horizon or data source
+  invalidates the previous run, removing the prior chart and recommendation
+  until a new run completes.
+- Figures remain illustrative for the Qatar demo; a real organization-backed
+  source is clearly distinguished. No purchase, stock release or approval
+  is triggered.
+
+Automated tests validate chart arithmetic (including negative balances),
+source completeness, matching commodity/period/scenario identity, progress
+bounds, and the post-completion visibility guards. Visual browser QA in the
+deployed environment remains a separate acceptance step.

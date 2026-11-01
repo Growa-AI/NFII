@@ -12,6 +12,7 @@ import {
 } from '@/lib/food-security/scenario'
 import { AGENT_REGISTRY } from '@/lib/ai/agents/registry'
 import { CommodityAgentVerdict } from '@/components/dashboard/commodity-agent-verdict'
+import { CommodityAgentProgress, CommodityScenarioCharts } from '@/components/dashboard/commodity-scenario-charts'
 import { buildAgentFinalRecommendation } from '@/lib/nfii/agent-decision'
 import type { OperationsSnapshot } from '@/lib/nfii/operations-types'
 import {
@@ -228,6 +229,10 @@ export function CommodityAgentLab({
         />
       )}
 
+      {workflowComplete && result && session && (
+        <CommodityScenarioCharts balance={session.balance} scenario={result.scenario}/>
+      )}
+
       {!result ? (
         <div role="status" className="rounded-lg border border-line bg-card p-4 text-[12px] text-content-soft">
           {balance
@@ -238,6 +243,11 @@ export function CommodityAgentLab({
         </div>
       ) : (
         <div className="space-y-4">
+          <CommodityAgentProgress
+            completed={revealed}
+            total={result.steps.length}
+            labels={result.steps.map(step=>tx(step.areaEn,step.areaAr))}
+          />
           {!workflowComplete && (
             <div role="status" aria-live="polite" className="rounded-lg border border-line-accent bg-cream-100 p-4 text-[12px] text-content">
               <strong>{tx('Agents are processing the selected scenario', 'الوكلاء يحللون السيناريو المختار')}</strong>
