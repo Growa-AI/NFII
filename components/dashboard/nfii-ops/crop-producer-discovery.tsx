@@ -179,8 +179,9 @@ export function CropProducerDiscovery({organizationId}:{organizationId:string|nu
           onChange={event=>{invalidate();setCountry(event.target.value)}}>
           <option value="">{tx('All documented countries','جميع الدول الموثقة')}</option>
           {feasibleCountries.map(item=><option key={item.countryCode} value={item.countryCode}>
-            {item.countryName}{item.observedQatarImports&&item.historicalUnitValueQarKg!==null?
-              ' · '+item.historicalUnitValueQarKg.toFixed(2)+' QAR/kg':' · unpriced'}
+            {item.countryName} · {item.documentedLeads} {tx('published leads','جهات منشورة')}
+            {item.observedQatarImports&&item.historicalUnitValueQarKg!==null?
+              ' · '+item.historicalUnitValueQarKg.toFixed(2)+' QAR/kg':''}
           </option>)}
 
         </select>
@@ -277,6 +278,12 @@ export function CropProducerDiscovery({organizationId}:{organizationId:string|nu
           </strong>
         </div>)}
       </div>
+      {data.country&&!data.countryHasDocumentedCropMatches&&
+        <button type="button" onClick={()=>{invalidate();setCountry('')}}
+          className="inline-flex min-h-9 items-center gap-2 rounded-full border border-line-accent px-3 py-1.5 text-[11px] font-medium text-sage-700">
+          {tx('Search published crop suppliers across all countries','بحث عن موردي المحاصيل المنشورين في جميع الدول')}
+          <ArrowUpRight className="h-3 w-3"/>
+        </button>}
       {data.country&&!data.countryHasDocumentedCropMatches&&
         <p className="rounded-lg border border-warning-line bg-warning-soft p-3 text-[11px] leading-relaxed text-content">
           {tx('No source-verified crop-company match in this country. The wider agricultural results below are only exploratory locations. Request original product and business evidence before qualifying any supplier.',
