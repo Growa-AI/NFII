@@ -40,3 +40,39 @@ export function makeRouteMapOverlays(
     }
   }).filter(item=>item.paths.length>0)
 }
+
+/**
+ * Initial UI illustration while the user has not run a provider-backed
+ * assessment. These lines NEVER imply a bookable maritime/air service.
+ */
+export function previewRouteMapOverlays(country:string):RouteMapOverlay[]{
+  const hub=getExportHub(country)
+  if(!hub)return []
+  const seaOrigin=pt(hub.sea),airOrigin=pt(hub.air)
+  const rows:Array<{id:string;mode:ScreenedRoute['mode'];
+    origin:GeoPointTuple;end:GeoPointTuple;via:GeoPointTuple|null}>= [
+    {id:'sea_direct',mode:'sea',origin:seaOrigin,end:pt(QATAR_PORT),via:null},
+    {id:'air_direct',mode:'air',origin:airOrigin,end:pt(QATAR_AIR),via:null},
+  ]
+  if(!['SA','AE','OM','KW','BH','QA'].includes(country)){
+    rows.push(
+      {id:'sea_jebel_ali',mode:'sea',origin:seaOrigin,end:pt(QATAR_PORT),via:jebel},
+      {id:'sea_salalah',mode:'sea',origin:seaOrigin,end:pt(QATAR_PORT),via:salalah},
+    )
+  }
+  if(country!=='AE')rows.push(
+    {id:'air_dubai',mode:'air',origin:airOrigin,end:pt(QATAR_AIR),via:dubai},
+  )
+  if(hub.roadEligible)rows.push({
+    id:'road_candidate',mode:'road',origin:seaOrigin,end:pt(QATAR_ROAD),via:null,
+  })
+  return rows.map(row=>({
+    id:row.id,mode:row.mode,origin:row.origin,destination:row.end,
+    from:row.mode==='air'?hub.airport:hub.port,
+    to:row.mode==='air'?QATAR_AIR.name:
+      row.mode==='road'?QATAR_ROAD.name:QATAR_PORT.name,
+    paths:splitAtDateline([[row.origin,...(row.via?[row.via]:[]),row.end]]),
+    via:row.via?'Candidate transfer hub':null,
+    fidelity:'illustrative' as const,source:null,
+  })).filter(x=>x.paths.length>0)
+}
