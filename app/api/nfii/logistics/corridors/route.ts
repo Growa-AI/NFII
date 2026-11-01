@@ -4,6 +4,7 @@ import {requireCapability} from '@/lib/auth/require-capability'
 import {validFoodUuid} from '@/lib/food-security/ingestion'
 import {validateLaneInput,CARGO_SPECS,getExportHub} from '@/lib/nfii/logistics-lanes'
 import {collectLogisticsEvidence} from '@/lib/nfii/logistics-providers'
+import {fetchFreightEstimate} from '@/lib/nfii/logistics-freight-benchmark'
 import {buildScreenedRoutes,LOGISTICS_DATA_RULES,type RateInput} from '@/lib/nfii/logistics-screening'
 import {countryName} from '@/lib/nfii/world-countries'
 import {findLogisticsSupplierOrigins,hasSupplierInOrigin,type SupplierOriginScope} from '@/lib/nfii/logistics-supplier-origins'
@@ -54,11 +55,16 @@ export async function GET(request:Request){
   if(!hasSupplierInOrigin(eligible,supplierScope as SupplierOriginScope,parsed.country))
     return reply({error:'This country has no matched suppliers for the selected crop and supplier scope.'},422)
   const matching=eligible.countries.find(row=>row.countryCode===parsed.country)
-  const evidence=await collectLogisticsEvidence(parsed.country)
+  const [evidence,freight]=await Promise.all([
+    collectLogisticsEvidence(parsed.country),
+    fetchFreightEstimate(parsed.country,parsed.tonnes,CARGO_SPECS[parsed.commodity].coldChain),
+  ])
   const screened=buildScreenedRoutes({
     ...parsed,rates,seaDistances:evidence.seaRoutes,
     lpi:evidence.lpi,lpiYear:evidence.lpiYear,
     waves:evidence.waves,weatherAgeHours:evidence.weatherAgeHours,
+    roadDistanceKm:evidence.roadRoute?.distanceKm??null,
+    roadDriveHours:evidence.roadRoute?.driveHours??null,
   })
   const spec=CARGO_SPECS[parsed.commodity]
   const hub=getExportHub(parsed.country)
@@ -79,11 +85,13 @@ export async function GET(request:Request){
       air:{name:hub.airport,code:hub.iata,coordinates:hub.air},
     }:null,
     routes:screened,
+    freightBenchmark:{...freight,sourceName:'Freightos marketplace estimates',
+      quoteStatus:'non_binding_benchmark' as const},
     sourceStatus:evidence.states,
     sources:evidence.refs,
     dataWarnings:evidence.messages,
     riskDisclaimer:'Heuristic screening score (0-100), not disruption probability or insurance risk.',
-    pricesDisclaimer:'No shipping spot quotes returned. Costs appear only when a user supplies a freight quote in QAR per tonne.',
+    pricesDisclaimer:'Freightos marketplace may supply non-binding dry-container reference ranges. Mode-specific route prices are calculated only from manually entered carrier rates; no reefer costs are inferred.',
     scheduleDisclaimer:'No confirmed port call, airline booking, border service or verified real shipment tracking without carrier systems.',
     modelLimitations:LOGISTICS_DATA_RULES,
     generatedAt:new Date().toISOString(),
