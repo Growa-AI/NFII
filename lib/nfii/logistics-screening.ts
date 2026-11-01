@@ -26,7 +26,7 @@ export type ScreenedRoute={
   reeferRequired:boolean;storageNote:string;
   rateQarPerTonne:number|null;freightTotalQar:number|null;freightQarKg:number|null;
   exposure:ExposureAssessment;
-  costSource:'user_supplied_rate'|'no_rate';riskScore:null;
+  costSource:'user_supplied_rate'|'no_rate';riskScore:number|null;
   riskBand:'reported_alert'|'no_nearby_reported_alert'|'unavailable';riskDrivers:string[];
   riskMethod:string;quality:'route_api'|'model_only';
   evidence:CorridorEvidence;sourceUrl:string|null;
