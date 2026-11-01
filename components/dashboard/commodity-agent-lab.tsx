@@ -15,7 +15,7 @@ import { CommodityAgentVerdict } from '@/components/dashboard/commodity-agent-ve
 import { buildAgentFinalRecommendation } from '@/lib/nfii/agent-decision'
 import type { OperationsSnapshot } from '@/lib/nfii/operations-types'
 import {
-  simulateCommodityAgents, type AgentStep,
+  simulateCommodityAgents, type AgentStep, type CommodityAgentSimulation,
 } from '@/lib/nfii/agent-operational-simulation'
 
 const PRESETS = [
@@ -40,6 +40,14 @@ const CONTROLS: Array<{key:keyof FoodScenarioAdjustments;en:string;ar:string}>=[
 function fmt(n:number|null|undefined):string {
   return n===null||n===undefined||!Number.isFinite(n)?'—':
     n.toLocaleString('en-US',{maximumFractionDigits:1})
+}
+
+type AgentRunSession = {
+  balance: FoodBalanceResult
+  operations: OperationsSnapshot
+  today: string
+  shocks: FoodScenarioAdjustments
+  result: CommodityAgentSimulation
 }
 
 function StepBadge({step,active,ar}:{step:AgentStep;active:boolean;ar:boolean}){
@@ -67,17 +75,26 @@ export function CommodityAgentLab({
   const [revealed,setRevealed]=useState(0)
   const [playing,setPlaying]=useState(false)
   const [decision,setDecision]=useState<'approve'|'reject'|null>(null)
+  const [session,setSession]=useState<AgentRunSession|null>(null)
 
-  const result=useMemo(()=>balance?simulateCommodityAgents({
-    commodityId:balance.commodityId,balance,operations,today,shocks,
-  }):null,[balance,operations,today,shocks])
+  // An actual click starts this read-only rehearsal. Before that point there
+  // is no agent analysis or verdict, even though the scenario inputs are ready.
+  // Reference checks also suppress stale results on the first render after a
+  // commodity, source, organization or scenario change.
+  const result=session &&
+    session.balance===balance &&
+    session.operations===operations &&
+    session.today===today &&
+    session.shocks===shocks ? session.result : null
+  const workflowComplete=result!==null && !playing && revealed>=result.steps.length
   const recommendation=useMemo(
-    ()=>result?buildAgentFinalRecommendation(result):null,[result],
+    ()=>workflowComplete && result ? buildAgentFinalRecommendation(result) : null,
+    [workflowComplete,result],
   )
 
   useEffect(()=>{
-    setRevealed(0);setPlaying(false);setDecision(null)
-  },[balance?.commodityId,balance?.sourceMode,balance?.fromDate,balance?.toDate,balance?.status])
+    setSession(null);setRevealed(0);setPlaying(false);setDecision(null)
+  },[balance,operations,today])
 
   useEffect(()=>{
     if(!playing||!result)return
@@ -86,16 +103,24 @@ export function CommodityAgentLab({
     return ()=>clearTimeout(timer)
   },[playing,revealed,result])
 
+  const clearRun=()=>{
+    setSession(null);setPlaying(false);setRevealed(0);setDecision(null)
+  }
   const adjust=(key:keyof FoodScenarioAdjustments,value:number)=>{
+    clearRun()
     setShocks(prev=>({...prev,[key]:value}))
-    setPlaying(false);setRevealed(0);setDecision(null)
   }
   const choose=(next:FoodScenarioAdjustments)=>{
-    setShocks({...next});setPlaying(false);setRevealed(0);setDecision(null)
+    clearRun()
+    setShocks({...next})
   }
   const start=()=>{
-    if(!result)return
-    setDecision(null);setRevealed(1);setPlaying(true)
+    if(!balance)return
+    const simulation=simulateCommodityAgents({
+      commodityId:balance.commodityId,balance,operations,today,shocks,
+    })
+    setSession({balance,operations,today,shocks,result:simulation})
+    setDecision(null);setRevealed(0);setPlaying(true)
   }
   const complete=()=>{
     if(!result)return
@@ -154,7 +179,7 @@ export function CommodityAgentLab({
           ))}
         </div>
 
-        {result&&<div className="mt-4 grid grid-cols-2 gap-2 lg:grid-cols-4">
+        {workflowComplete && result && <div className="mt-4 grid grid-cols-2 gap-2 lg:grid-cols-4">
           {[
             {en:'Baseline closing stock',ar:'المخزون الأساسي النهائي',
               value:fmt(balance?.totals.projectedClosingStockTonnes),unit:'t'},
@@ -174,15 +199,15 @@ export function CommodityAgentLab({
         </div>}
 
         <div className="mt-4 flex flex-wrap items-center gap-2">
-          <button type="button" disabled={!result} onClick={start}
+          <button type="button" disabled={!balance} onClick={start}
             className="inline-flex min-h-10 items-center gap-2 rounded-full bg-ink px-5 py-2 text-[12px] font-medium text-white disabled:opacity-40">
             <Play className="h-4 w-4" aria-hidden="true"/>
-            {playing?tx('Restart agent sequence','إعادة تشغيل التسلسل'):tx('Run agent sequence','تشغيل تسلسل الوكلاء')}
+            {result?tx('Restart simulation','إعادة تشغيل المحاكاة'):tx('Run agent sequence','تشغيل تسلسل الوكلاء')}
           </button>
-          <button type="button" disabled={!result} onClick={complete}
+          <button type="button" disabled={!result || workflowComplete} onClick={complete}
             className="inline-flex min-h-10 items-center gap-2 rounded-full border border-line-strong bg-card px-4 py-2 text-[12px] text-content hover:bg-muted disabled:opacity-40">
             <FastForward className="h-4 w-4" aria-hidden="true"/>
-            {tx('Show full workflow','عرض سير العمل كاملاً')}
+            {tx('Complete active simulation','إكمال المحاكاة الجارية')}
           </button>
           <button type="button" onClick={()=>choose(ZERO_FOOD_SCENARIO)}
             className="inline-flex min-h-10 items-center gap-2 px-3 text-[12px] text-content-soft hover:text-content">
@@ -195,21 +220,35 @@ export function CommodityAgentLab({
         </div>
       </div>
 
-      {recommendation && result && (
+      {recommendation && workflowComplete && (
         <CommodityAgentVerdict
           recommendation={recommendation}
-          workflowComplete={revealed >= result.steps.length}
+          workflowComplete={workflowComplete}
           humanChoice={decision}
         />
       )}
 
-      {!result?(
-        <div className="rounded-lg border border-warning-line bg-warning-soft p-4 text-[12px] text-content">
-          {tx('Select a food balance source to run this simulation. No fabricated baseline is used in Live mode.',
-            'اختر مصدر بيانات الميزان لتشغيل المحاكاة. لا تُستخدم بيانات مخترعة في وضع البيانات الفعلية.')}
+      {!result ? (
+        <div role="status" className="rounded-lg border border-line bg-card p-4 text-[12px] text-content-soft">
+          {balance
+            ? tx('Ready. Choose a scenario, then press Run agent sequence. No result has been produced yet.',
+                'جاهز. اختر سيناريو ثم اضغط تشغيل تسلسل الوكلاء. لم تصدر أي نتيجة بعد.')
+            : tx('Select a food balance source first. No fabricated baseline is used in Live mode.',
+                'اختر مصدر بيانات الميزان أولاً. لا تُستخدم بيانات مخترعة في وضع البيانات الفعلية.')}
         </div>
-      ):(
-        <div className="grid gap-4 xl:grid-cols-[minmax(0,1.65fr)_minmax(285px,.85fr)]">
+      ) : (
+        <div className="space-y-4">
+          {!workflowComplete && (
+            <div role="status" aria-live="polite" className="rounded-lg border border-line-accent bg-cream-100 p-4 text-[12px] text-content">
+              <strong>{tx('Agents are processing the selected scenario', 'الوكلاء يحللون السيناريو المختار')}</strong>
+              <p className="mt-1 text-content-soft">
+                {tx('The final recommendation and numeric scenario results will appear only after all stages complete.',
+                  'ستظهر التوصية النهائية والنتائج الرقمية فقط بعد اكتمال جميع المراحل.')}
+              </p>
+            </div>
+          )}
+
+          <div className="grid gap-4 xl:grid-cols-[minmax(0,1.65fr)_minmax(285px,.85fr)]">
           <div className="min-w-0 rounded-xl border border-line bg-card p-4">
             <h3 className="flex items-center gap-2 text-[15px] font-medium text-content">
               <Bot className="h-4 w-4 text-sage-700"/>
@@ -270,10 +309,14 @@ export function CommodityAgentLab({
                 {tx('Supporting agent proposals','مقترحات الوكلاء الداعمة')}
               </h3>
               <p className="mt-1 text-[11px] text-content-soft">
-                {tx('Additional follow-up recommendations. The main conclusion appears in Final Agent Recommendation above. None is executed.',
-                  'توصيات متابعة إضافية. تظهر الخلاصة الرئيسية في التوصية النهائية أعلاه. لم يُنفذ أي إجراء.')}
+                {workflowComplete
+                  ? tx('Additional follow-up recommendations. The final recommendation appears above. None is executed.',
+                      'توصيات متابعة إضافية. تظهر التوصية النهائية أعلاه. لم يُنفذ أي إجراء.')
+                  : tx('These follow-up proposals will appear after the simulation finishes.',
+                      'ستظهر مقترحات المتابعة بعد اكتمال المحاكاة.')}
               </p>
-              <ul className="mt-3 space-y-2">
+              {workflowComplete ? (
+                <ul className="mt-3 space-y-2">
                   {result.proposals.map(proposal=>(
                     <li key={proposal.id} className="rounded-lg border border-line bg-background p-3">
                       <div className="flex flex-wrap items-center justify-between gap-2">
@@ -288,6 +331,12 @@ export function CommodityAgentLab({
                     </li>
                   ))}
                 </ul>
+              ) : (
+                <p className="mt-3 rounded-lg bg-muted p-3 text-[12px] text-content-soft">
+                  {tx('Awaiting the conclusion of the active agent run.',
+                    'بانتظار اكتمال تشغيل الوكلاء الحالي.')}
+                </p>
+              )}
             </div>
 
             <div className="rounded-xl border border-line bg-card p-4">
@@ -299,7 +348,7 @@ export function CommodityAgentLab({
                 {tx('The operational workflow stops here. Buttons only rehearse the reviewer outcome locally.',
                   'يتوقف سير العمل هنا. الأزرار تحاكي قرار المراجع محلياً فقط.')}
               </p>
-              {revealed>=result.steps.length&&(
+              {workflowComplete && (
                 <div className="mt-3 flex flex-wrap gap-2">
                   <button type="button" onClick={()=>setDecision('approve')}
                     className="rounded-full border border-line-accent bg-cream-100 px-3 py-2 text-[11px] font-medium text-sage-700">
@@ -333,6 +382,7 @@ export function CommodityAgentLab({
               </p>
             </div>
           </aside>
+          </div>
         </div>
       )}
     </section>

@@ -115,14 +115,28 @@ integration remain independent future engineering work.
   necessary before a production rollout.
 
 
-## Final agent recommendation, always visible
+## Final agent recommendation: only after running the agent sequence
 
-The operating simulator now computes **one consolidated outcome** per commodity,
-horizon and shock configuration through \`lib/nfii/agent-decision.ts\`.
-\`CommodityAgentVerdict\` displays that outcome **above** the detailed agent
-activity log, immediately after input selection. Users do not need to play all
-ten specialist stages to find the main conclusion.
+The simulator computes the deterministic analysis **only when the operator
+presses Run agent sequence**. It does not generate or display the agent result
+during initial page rendering or when simply selecting scenario inputs.
 
+The ten-stage progress is revealed in order. **Only after all ten stages
+finish** does `CommodityAgentVerdict` appear above the activity log, with
+the consolidated outcome computed through `lib/nfii/agent-decision.ts`.
+
+- Before Run: no numeric scenario results, agent proposals or final verdict.
+- During Run: activity log and progress, with conclusions withheld.
+- After completion: executive verdict, scenario metrics, proposals and a
+  simulated human approval gate; no real action is executed.
+- Complete active simulation: optional fast-forward enabled **only after**
+  Run has started; never exposes a conclusion before initiation.
+- Scenario/shock/commodity/source changes invalidate the previous run
+  immediately; a new Run is required for a new conclusion.
+- Reset clears the run and restores baseline assumptions.
+
+The engine remains a deterministic **read-only rehearsal**, not an LLM agent
+or a real procurement or stock movement.
 The executive summary explicitly separates:
 
 - **Action to evaluate**: evidence collection, investigation of a scenario
