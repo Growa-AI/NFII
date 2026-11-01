@@ -59,7 +59,7 @@ export type OriginPriceReport={
   productScope:string
   sourceUrl:string|null
   previousSourceUrl:string|null
-  sourceName:typeof COMTRADE_SOURCE
+  sourceName:string
   method:'observed_qatar_import_unit_values'
   note:string
 }
