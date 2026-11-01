@@ -6,6 +6,7 @@
  */
 import {CARGO_SPECS,getExportHub,haversineKm,QATAR_AIR,QATAR_PORT,QATAR_ROAD,type GeoPoint} from './logistics-lanes'
 import type {GeoLine} from './logistics-route-geometry'
+import type {HazardCoverage} from './logistics-hazards'
 
 export type Mode='sea'|'air'|'road'
 export type CorridorEvidence='carrier_route_geometry'|'geographic_proxy'
@@ -13,7 +14,7 @@ export type RateInput={sea:number|null;air:number|null;road:number|null}
 export type RouteInputs={commodity:string;country:string;tonnes:number;limitDays:number;rates:RateInput;
   seaDistances:Record<string,{km:number;durationDays:number|null;routeUrl:string;geometry?:GeoLine|null}>|null;
   lpi:number|null;lpiYear:number|null;waves:number|null;weatherAgeHours:number|null;
-  roadDistanceKm?:number|null;roadDriveHours?:number|null}
+  roadDistanceKm?:number|null;roadDriveHours?:number|null;hazards?:HazardCoverage|null}
 export type ScreenedRoute={
   id:string;country:string;commodity:string;mode:Mode;via:string|null;
   from:string;to:string;originCode:string;destinationCode:string;
@@ -21,8 +22,8 @@ export type ScreenedRoute={
   estimatedDays:number|null;timeBasis:string;feasibleBeforeDeadline:boolean|null;
   reeferRequired:boolean;storageNote:string;
   rateQarPerTonne:number|null;freightTotalQar:number|null;freightQarKg:number|null;
-  costSource:'user_supplied_rate'|'no_rate';riskScore:number;
-  riskBand:'lower'|'elevated'|'high';riskDrivers:string[];
+  costSource:'user_supplied_rate'|'no_rate';riskScore:null;
+  riskBand:'reported_alert'|'no_nearby_reported_alert'|'unavailable';riskDrivers:string[];
   riskMethod:string;quality:'route_api'|'model_only';
   evidence:CorridorEvidence;sourceUrl:string|null;
   requiresQuote:true;bookingConfirmed:false;
@@ -55,59 +56,42 @@ export function buildScreenedRoutes(inputs:RouteInputs):ScreenedRoute[]{
       realRoad?inputs.roadDistanceKm!:route.mode==='road'?rawKm*1.4:rawKm
     const documentedDistance=route.mode==='sea'&&routeKm!==undefined
     // Single air and road paths are only coarse screening scenarios.
-    const days=route.mode==='sea'?
-      (observed?.durationDays??null):
-      route.mode==='air'?round(distance/750/24+2.5+(route.via?1:0),1):
-      round(distance/550+1.4,1)
+    const days=route.mode==='sea'?(observed?.durationDays??null):null
     const rate=inputs.rates[route.mode]
     const safeRate=rate!==null&&Number.isFinite(rate)&&rate>0&&rate<MAX?rate:null
     const riskDrivers:string[]=[]
-    let score=20
-    if(!documentedDistance&&route.mode==='sea'){
-      score+=20;riskDrivers.push('Sea distance/time unavailable without routing provider')
-    }
-    if(!route.via&&route.mode==='air'){
-      score+=8;riskDrivers.push('No verified flight schedule or flight capacity')
-    }
-    if(route.via){
-      score+=12;riskDrivers.push('Unverified connection or transshipment and handling')
-    }
-    if(route.mode==='road'){
-      score+=realRoad?8:14
+    const coverage=inputs.hazards
+    const recent=coverage?.state==='available'?coverage.alerts:[]
+    if(coverage?.state!=='available')
+      riskDrivers.push('GDACS regional alert coverage unavailable; hazards not assessed')
+    else if(recent.length)
+      riskDrivers.push(...recent.map(alert=>'GDACS '+alert.label))
+    else
+      riskDrivers.push('No recent GDACS orange/red point alerts within 400 km of the sampled endpoints; not evidence of a safe corridor')
+    if(spec.coldChain)
+      riskDrivers.push('Product requires verified temperature controls and remaining shelf-life validation')
+    if(route.via)
+      riskDrivers.push('Transfer hub is a geographic candidate, not a validated operating service')
+    if(route.mode==='sea'&&!documentedDistance)
+      riskDrivers.push('No navigable route and duration returned from SeaRoutes for this itinerary')
+    if(route.mode==='air')
+      riskDrivers.push('No airline itinerary, schedule, cargo acceptance or verified delivery ETA')
+    if(route.mode==='road')
       riskDrivers.push(realRoad?
-        'Road geometry from Google car routing; commercial trucking/border clearance unverified':
-        'Road distance is geometric; no verified border clearance/route')
-    }
-    if(spec.coldChain){
-      score+=12;riskDrivers.push('Requires documented temperature and shelf-life handling')
-    }
-    if(days===null){
-      score+=12;riskDrivers.push('Transit duration missing, deadline cannot be assessed')
-    }else if(days>inputs.limitDays){
-      score+=25;riskDrivers.push('Planning estimate exceeds delivery deadline')
-    }else if(days>inputs.limitDays*.8){
-      score+=12;riskDrivers.push('Limited margin to delivery deadline')
-    }
-    if(inputs.lpi!==null){
-      score+=round((5-inputs.lpi)*6,1)
-      riskDrivers.push('World Bank LPI country benchmark '+inputs.lpi+
-        ' ('+inputs.lpiYear+'); dated national score, NOT lane risk')
-    }else {
-      score+=8;riskDrivers.push('Origin country LPI not available')
-    }
-    if(route.mode==='sea'){
-      if(inputs.waves!==null&&Number.isFinite(inputs.waves)){
-        if(inputs.waves>=3){
-          score+=15;riskDrivers.push('Elevated waves at sampled port grid; route-wide conditions unknown')
-        }
-      }else{
-        score+=5;riskDrivers.push('Live marine wave sample unavailable')
-      }
-    }
-    if(safeRate===null){
-      score+=6;riskDrivers.push('No carrier freight quote supplied; real landed cost unknown')
-    }
-    const bounded=Math.min(100,Math.max(0,round(score,0)))
+        'Google car-driving geometry is available; heavy truck, border crossing and customs remain unverified':
+        'No road network geometry; truck route, border and timing unverified')
+    if(days!==null&&days>inputs.limitDays)
+      riskDrivers.push('SeaRoutes theoretical voyage duration exceeds requested delivery window')
+    if(inputs.lpi!==null)
+      riskDrivers.push('World Bank historical LPI: '+inputs.lpi+' ('+inputs.lpiYear+
+        '), national context only, not route-specific disruption data')
+    if(route.mode==='sea'&&inputs.waves!==null)
+      riskDrivers.push('Open-Meteo sampled origin-port maximum forecast wave: '+
+        inputs.waves+'m; not full voyage exposure')
+    if(safeRate===null)
+      riskDrivers.push('Actual carrier price not available for this mode')
+    const riskBand=coverage?.state!=='available'?'unavailable':
+      recent.length?'reported_alert':'no_nearby_reported_alert'
     return {
       id:route.id,country:origin,commodity:inputs.commodity,mode:route.mode,
       via:route.via,from:route.from,to:route.to,
@@ -128,8 +112,8 @@ export function buildScreenedRoutes(inputs:RouteInputs):ScreenedRoute[]{
       freightTotalQar:safeRate===null?null:round(safeRate*tonnes,2),
       freightQarKg:safeRate===null?null:round(safeRate/1000,3),
       costSource:safeRate===null?'no_rate':'user_supplied_rate',
-      riskScore:bounded,riskBand:bounded>=67?'high':bounded>=40?'elevated':'lower',
-      riskDrivers,riskMethod:'Transparent screening heuristic, not actuarial forecast',
+      riskScore:null,riskBand,
+      riskDrivers,riskMethod:'Recent GDACS endpoint alert context; not a numeric probability or verified route disruption',
       quality:documentedDistance||realRoad?'route_api':'model_only',
       evidence:documentedDistance?'carrier_route_geometry':'geographic_proxy',
       sourceUrl:documentedDistance?observed!.routeUrl:realRoad?
@@ -169,12 +153,14 @@ export function buildScreenedRoutes(inputs:RouteInputs):ScreenedRoute[]{
   }
   return variants.sort((a,b)=>
     (a.feasibleBeforeDeadline===false?1:0)-(b.feasibleBeforeDeadline===false?1:0)||
-    a.riskScore-b.riskScore)
+    (a.mode==='sea'?0:a.mode==='air'?1:2)-
+      (b.mode==='sea'?0:b.mode==='air'?1:2))
 }
 export const LOGISTICS_DATA_RULES=[
   'No live carrier schedules or bookable routings without carrier API.',
-  'Straight-line routes are lower bounds, not navigable maritime paths.',
+  'Unavailable routing sources imply N/A times and no navigable route line.',
   'Cost values only from user-provided freight rate per tonne; do not imply spot quotes.',
+  'GDACS alerts near origin/Qatar are endpoint hazard observations, not route disruption estimates.',
   'LPI is a historical national benchmark, not a current shipment risk probability.',
   'Wave height is sampled at the departure port; not entire-route storm intelligence.',
   'Shelf-life constraints depend on harvest date, loading temperature and SKU.',
