@@ -15,7 +15,8 @@ import { PageHeader } from '@/components/brand/layout'
 import { GlobalSupplierResearch } from '@/components/dashboard/nfii-ops/global-supplier-research'
 import { CropProducerDiscovery } from '@/components/dashboard/nfii-ops/crop-producer-discovery'
 import { ProcurementRecordPanel } from '@/components/dashboard/nfii-ops/procurement-record-panel'
-import {contractPosition,type ProcurementRecordView} from '@/lib/nfii/procurement-workflow'
+import {approvalReadiness,approvalTarget,contractPosition,
+  procurementRecordLabel,type ProcurementRecordView} from '@/lib/nfii/procurement-workflow'
 import {
   ProcurementHome, ProcurementJourney, ProcurementStageHeading,
   procurementTabCollection, procurementTabKind, type ProcurementTab,
