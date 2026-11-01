@@ -1,10 +1,10 @@
 'use client'
 
 import Link from 'next/link'
+import {useRouter} from 'next/navigation'
 import {useEffect,useMemo,useRef,useState} from 'react'
-import {AlertTriangle,ArrowRight,BarChart3,Bot,CheckCircle2,
-  ClipboardCheck,Database,FileSearch,PackageCheck,RefreshCw,
-  ShieldAlert,Warehouse} from 'lucide-react'
+import {AlertTriangle,ArrowRight,BarChart3,Bot,
+  Database,FileSearch,PackageCheck,RefreshCw,Warehouse} from 'lucide-react'
 import {useI18n} from '@/lib/i18n'
 import {resolveCommodity} from '@/lib/platform/commodity-catalog'
 import type {FoodBalanceResult} from '@/lib/food-security/balance'
@@ -302,6 +302,7 @@ function AgentPanel({
 export function StrategicReservesCommand({
   organizationId,snapshot,today,truncated,canEdit,onOpenRegister,onRefresh,
 }:Props){
+  const router=useRouter()
   const {locale}=useI18n()
   const ar=locale==='ar'
   const tx=(en:string,arabic:string)=>ar?arabic:en
@@ -410,7 +411,7 @@ export function StrategicReservesCommand({
       Graph totals and agent decisions cannot be interpreted as complete inventory.
     </div>}
     {!registered&&<div className="rounded-lg border border-line p-4 text-[12px] text-content-soft">
-      No lots are registered in this organization's accessible ledger. This is not proof of zero physical
+      No lots are registered in this organization&apos;s accessible ledger. This is not proof of zero physical
       stock. Add documented shipments, approved warehouses and reserve lots before drawing inventory conclusions.
       {canEdit&&<button className="ms-2 font-semibold text-sage-700 underline" type="button"
         onClick={()=>onOpenRegister('warehouses')}>Open warehouse registration</button>}
@@ -495,10 +496,10 @@ export function StrategicReservesCommand({
       onSource={commodity=>{
         const params=new URLSearchParams({module:'commodities',view:'sources'})
         if(commodity)params.set('commodityId',commodity)
-        window.location.assign('/dashboard?'+params.toString())
+        router.push('/dashboard?'+params.toString())
       }}/>
     <p className="text-[11px] text-content-soft">
-      Readiness is derived only from this organization's loaded, approved ledger records.
+      Readiness is derived only from this organization&apos;s loaded, approved ledger records.
       Stock quantities are lot administrative entries and are not reconciled to physical sensor counts,
       customs telemetry, national reserves, or other organizations. No fabricated historical chart is shown.
     </p>

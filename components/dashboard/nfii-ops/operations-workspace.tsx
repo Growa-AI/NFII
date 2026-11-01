@@ -1,6 +1,7 @@
 'use client'
 
 import Link from 'next/link'
+import {useRouter} from 'next/navigation'
 import { useEffect, useMemo, useState, type FormEvent } from 'react'
 import {
   ArrowUpRight, Check, ClipboardCheck, FileCheck2,
@@ -255,6 +256,7 @@ function OperationsHeader({focus,organizationName}:{
 }
 
 export function NfiiOperationsWorkspace({focus}:{focus:OperationsArea}){
+  const router=useRouter()
   const {organization,loading:orgLoading}=useOrganization()
   const ctx=useActiveOrganizationOptional()
   const {user}=useAuth()
