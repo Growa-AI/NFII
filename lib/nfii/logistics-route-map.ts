@@ -11,9 +11,6 @@ export type RouteMapOverlay={
   source:string|null
 }
 const pt=(p:GeoPoint):GeoPointTuple=>[p.lat,p.lon]
-const jebel:GeoPointTuple=[24.99,55.06]
-const salalah:GeoPointTuple=[16.94,54.01]
-const dubai:GeoPointTuple=[25.25,55.36]
 /** Links missing source geometry are explicitly illustrative, not navigable tracks. */
 export function makeRouteMapOverlays(
   routes:readonly ScreenedRoute[],country:string,
@@ -25,8 +22,6 @@ export function makeRouteMapOverlays(
     const origin=route.mode==='air'?pt(hub.air):pt(hub.sea)
     const destination=route.mode==='air'?pt(QATAR_AIR):
       route.mode==='road'?pt(QATAR_ROAD):pt(QATAR_PORT)
-    const via=route.id==='sea_jebel_ali'?jebel:
-      route.id==='sea_salalah'?salalah:route.id==='air_dubai'?dubai:null
     const published=route.mode==='sea'?observed?.[route.id]?.geometry:null
     const paths=published?.length?splitAtDateline(published):[]
     return {
@@ -53,18 +48,6 @@ export function previewRouteMapOverlays(country:string):RouteMapOverlay[]{
     {id:'sea_direct',mode:'sea',origin:seaOrigin,end:pt(QATAR_PORT),via:null},
     {id:'air_direct',mode:'air',origin:airOrigin,end:pt(QATAR_AIR),via:null},
   ]
-  if(!['SA','AE','OM','KW','BH','QA'].includes(country)){
-    rows.push(
-      {id:'sea_jebel_ali',mode:'sea',origin:seaOrigin,end:pt(QATAR_PORT),via:jebel},
-      {id:'sea_salalah',mode:'sea',origin:seaOrigin,end:pt(QATAR_PORT),via:salalah},
-    )
-  }
-  if(country!=='AE')rows.push(
-    {id:'air_dubai',mode:'air',origin:airOrigin,end:pt(QATAR_AIR),via:dubai},
-  )
-  if(hub.roadEligible)rows.push({
-    id:'road_candidate',mode:'road',origin:seaOrigin,end:pt(QATAR_ROAD),via:null,
-  })
   return rows.map(row=>({
     id:row.id,mode:row.mode,origin:row.origin,destination:row.end,
     from:row.mode==='air'?hub.airport:hub.port,
