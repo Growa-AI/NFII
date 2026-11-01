@@ -894,7 +894,7 @@ export function NfiiOperationsWorkspace({focus}:{focus:OperationsArea}){
                       (decision==='reject'||approvalReadiness(s,approval,today).ready))
                       openAction('approval',approval,decision)
                   }}
-                  onGoToLogistics={()=>{window.location.assign('/dashboard/logistics')}}
+                  onGoToLogistics={()=>router.push('/dashboard/logistics')}
                 />}
 
               {(focus!=='procurement'||procurementTab!=='approvals')&&
