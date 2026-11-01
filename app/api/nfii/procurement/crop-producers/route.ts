@@ -8,6 +8,7 @@ import {
   USDA_ORGANIC_REGISTRY_URL,validateCropProducerSearch,
 } from '@/lib/nfii/crop-producer-directory'
 import {fetchMappedCropLeads} from '@/lib/nfii/world-crop-mapping'
+import {fetchExpandedFarmResults} from '@/lib/nfii/world-agricultural-leads'
 import {searchGlobalCropBusinesses} from '@/lib/nfii/world-crop-places'
 import {countryName} from '@/lib/nfii/world-countries'
 import type {CropProducerEvidence} from '@/lib/nfii/crop-producer-directory'
@@ -27,8 +28,8 @@ export async function GET(request:Request){
   const params=new URL(request.url).searchParams
   const parsed=validateCropProducerSearch(params)
   if(!parsed.ok)return reply({error:parsed.error},400)
-  const research=params.get('research')??'mapped'
-  if(!['curated','mapped','places'].includes(research))
+  const research=params.get('research')??'expanded'
+  if(!['curated','mapped','expanded','places'].includes(research))
     return reply({error:'Invalid crop research source'},400)
   if(research==='places'&&!parsed.country)
     return reply({error:'Select a country before using paid business discovery'},400)
@@ -49,6 +50,8 @@ export async function GET(request:Request){
 
   const documented=findDocumentedCropOrganizations(parsed.commodity,parsed.country)
   let additional:CropProducerEvidence[]=[]
+  let cropTaggedCount=0
+  let agriculturalCandidateCount=0
   let researchStatus:'not_requested'|'available'|'no_matches'|'not_configured'|'unavailable'=
     'not_requested'
   let researchMessage=''
@@ -58,9 +61,17 @@ export async function GET(request:Request){
       researchMessage='Google Places requires a configured server-side API key and billing.'
     }else{
       try{
-        additional=research==='places'?
-          await searchGlobalCropBusinesses(parsed.commodity,parsed.country):
-          await fetchMappedCropLeads(parsed.commodity,parsed.country)
+        if(research==='expanded'){
+          const expanded=await fetchExpandedFarmResults(parsed.commodity,parsed.country)
+          cropTaggedCount=expanded.cropTagged.length
+          agriculturalCandidateCount=expanded.agriculturalCandidates.length
+          additional=[...expanded.cropTagged,...expanded.agriculturalCandidates]
+        }else{
+          additional=research==='places'?
+            await searchGlobalCropBusinesses(parsed.commodity,parsed.country):
+            await fetchMappedCropLeads(parsed.commodity,parsed.country)
+          if(research==='mapped')cropTaggedCount=additional.length
+        }
         researchStatus=additional.length?'available':'no_matches'
       }catch(error){
         researchStatus='unavailable'
@@ -86,7 +97,9 @@ export async function GET(request:Request){
   }
   return reply({
     research,researchStatus,researchMessage,
+    cropTaggedCount,agriculturalCandidateCount,
     documentedCount:documented.length,
+    countryHasDocumentedCropMatches:documented.length>0,
     exploratoryCount:results.length-documented.length,
     provider:'crop-sector-directory',
     commodity:parsed.commodity,
@@ -103,7 +116,8 @@ export async function GET(request:Request){
     sourceCoverage:cropProducerCoverage(),
     completeGlobalCoverage:false,
     liveCertificateVerified:false,
-    note:'Curated documented sourcing leads plus optional, independently labelled exploratory data. NOT a live ' +
+    note:'Curated documented sourcing leads plus community mapped locations explicitly labelled ' +
+      'as crop-verified or crop-UNVERIFIED. NOT a live ' +
       'global supplier census or current independent verification. Association membership, ' +
       'market listings, product certificates and national marks have DIFFERENT evidentiary strength. ' +
       'They do not prove own-farm production, current certification, export eligibility, ' +
