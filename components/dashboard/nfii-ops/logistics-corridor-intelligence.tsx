@@ -452,7 +452,7 @@ export function LogisticsCorridorIntelligence({
           <tbody>{data.routes.map(route=><tr key={route.id} className="border-t border-line">
             <td className="p-2 text-content">{route.from} → Qatar</td>
             <td className="p-2 capitalize">{route.mode}{route.via?' via hub':''}</td>
-            <td className="p-2 text-right tabular-nums">{format(route.distanceKm,0)}</td>
+            <td className="p-2 text-right tabular-nums">{route.distanceType==='straight_line_lower_bound'?(route.mode==='sea'?'N/A':'≥'+format(route.distanceKm,0)):format(route.distanceKm,0)}</td>
             <td className="p-2 text-right tabular-nums">{format(route.estimatedDays)}</td>
             <td className="p-2 text-right tabular-nums">{format(route.freightQarKg,3)}</td>
             <td className="p-2 text-right">{route.riskBand==='reported_alert'?'Regional alert':route.riskBand==='unavailable'?'Unknown':'No nearby alert'}</td>
@@ -472,6 +472,9 @@ export function LogisticsCorridorIntelligence({
         </h3>
         <p className="mt-1 text-[11px] text-content-soft">
           {chosen.timeBasis} · {chosen.distanceType.replaceAll('_',' ')}
+          {chosen.quality==='model_only'&&<span className="ms-2 font-semibold text-warning-strong">
+            {tx('Unverified transport itinerary','مسار نقل غير مؤكد')}
+          </span>}
         </p>
         <p className="mt-2 text-[12px] text-content">
           {tx('If quoted, freight for this shipment:','تكلفة النقل إن وجد عرض سعر:')}
