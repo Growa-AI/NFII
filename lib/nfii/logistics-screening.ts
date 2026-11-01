@@ -128,10 +128,12 @@ export function buildScreenedRoutes(inputs:RouteInputs):ScreenedRoute[]{
     geometry:[originSea,QATAR_PORT]})
   const variants:ScreenedRoute[]=[directSea]
   if(!['SA','AE','OM','KW','BH','QA'].includes(origin)){
+    if(inputs.seaDistances?.sea_jebel_ali?.geometry?.length)
     variants.push(make({id:'sea_jebel_ali',mode:'sea',via:'Jebel Ali transfer candidate',
       from:hub.port,to:QATAR_PORT.name,originCode:hub.unlocode,
       destinationCode:QATAR_PORT.code,
       geometry:[originSea,wayJebel,QATAR_PORT]}))
+    if(inputs.seaDistances?.sea_salalah?.geometry?.length)
     variants.push(make({id:'sea_salalah',mode:'sea',via:'Salalah transfer candidate',
       from:hub.port,to:QATAR_PORT.name,originCode:hub.unlocode,
       destinationCode:QATAR_PORT.code,geometry:[originSea,waySalalah,QATAR_PORT]}))
@@ -139,13 +141,9 @@ export function buildScreenedRoutes(inputs:RouteInputs):ScreenedRoute[]{
   variants.push(make({id:'air_direct',mode:'air',via:null,from:hub.airport,
     to:QATAR_AIR.name,originCode:hub.iata,destinationCode:QATAR_AIR.code,
     geometry:[originAir,QATAR_AIR]}))
-  if(origin!=='AE'){
-    variants.push(make({id:'air_dubai',mode:'air',via:'Dubai connection candidate',
-      from:hub.airport,to:QATAR_AIR.name,originCode:hub.iata,
-      destinationCode:QATAR_AIR.code,
-      geometry:[originAir,{lat:25.25,lon:55.36},QATAR_AIR]}))
-  }
-  if(hub.roadEligible){
+  // Do not propose a Dubai air connection without airline schedules/cargo service.
+  if(hub.roadEligible&&inputs.roadDistanceKm!==null&&
+    inputs.roadDistanceKm!==undefined){
     variants.push(make({id:'road_candidate',mode:'road',via:'Border crossing unverified',
       from:hub.port,to:'Abu Samra / Doha',originCode:origin,
       destinationCode:QATAR_ROAD.code,
