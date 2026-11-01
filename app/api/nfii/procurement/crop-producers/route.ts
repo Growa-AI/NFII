@@ -7,6 +7,10 @@ import {
   findDocumentedCropOrganizations,GLOBALGAP_REGISTRY_URL,
   USDA_ORGANIC_REGISTRY_URL,validateCropProducerSearch,
 } from '@/lib/nfii/crop-producer-directory'
+import {fetchMappedCropLeads} from '@/lib/nfii/world-crop-mapping'
+import {searchGlobalCropBusinesses} from '@/lib/nfii/world-crop-places'
+import {countryName} from '@/lib/nfii/world-countries'
+import type {CropProducerEvidence} from '@/lib/nfii/crop-producer-directory'
 
 export const runtime='nodejs'
 export const dynamic='force-dynamic'
@@ -23,6 +27,11 @@ export async function GET(request:Request){
   const params=new URL(request.url).searchParams
   const parsed=validateCropProducerSearch(params)
   if(!parsed.ok)return reply({error:parsed.error},400)
+  const research=params.get('research')??'mapped'
+  if(!['curated','mapped','places'].includes(research))
+    return reply({error:'Invalid crop research source'},400)
+  if(research==='places'&&!parsed.country)
+    return reply({error:'Select a country before using paid business discovery'},400)
   const organizationId=(params.get('organizationId')??'').trim()
   if(organizationId&&!validFoodUuid(organizationId))
     return reply({error:'Invalid organizationId'},400)
@@ -35,8 +44,50 @@ export async function GET(request:Request){
     if(!access.ok)return reply({error:access.error},access.status)
   }
 
-  const results=findDocumentedCropOrganizations(parsed.commodity,parsed.country)
+  if(research==='places'&&!organizationId)
+    return reply({error:'Paid business discovery requires an authorized organization'},403)
+
+  const documented=findDocumentedCropOrganizations(parsed.commodity,parsed.country)
+  let additional:CropProducerEvidence[]=[]
+  let researchStatus:'not_requested'|'available'|'no_matches'|'not_configured'|'unavailable'=
+    'not_requested'
+  let researchMessage=''
+  if(parsed.country&&research!=='curated'){
+    if(research==='places'&&!process.env.GOOGLE_PLACES_API_KEY){
+      researchStatus='not_configured'
+      researchMessage='Google Places requires a configured server-side API key and billing.'
+    }else{
+      try{
+        additional=research==='places'?
+          await searchGlobalCropBusinesses(parsed.commodity,parsed.country):
+          await fetchMappedCropLeads(parsed.commodity,parsed.country)
+        researchStatus=additional.length?'available':'no_matches'
+      }catch(error){
+        researchStatus='unavailable'
+        const message=error instanceof Error?error.message:'Source unavailable'
+        console.warn('[procurement/crop-producers] external lookup unavailable',
+          research,message.replace(/[^a-zA-Z0-9 ()-]/g,'').slice(0,100))
+        researchMessage='The selected global source is unavailable. Curated matches remain '+
+          'visible; do not treat this as zero suppliers in the country.'
+      }
+    }
+  }
+  // Dynamic open-data sites and business keywords never override stronger,
+  // product-specific sourced records from curated provider lists.
+  const results=[...documented]
+  const signature=(r:CropProducerEvidence)=>r.countryCode+'|'+
+    r.organizationName.toLowerCase().normalize('NFKD').replace(/[^a-z0-9]/g,'')
+  const seen=new Set(documented.map(signature))
+  for(const candidate of additional){
+    const key=signature(candidate)
+    if(seen.has(key))continue
+    seen.add(key)
+    results.push({...candidate,countryName:countryName(candidate.countryCode)})
+  }
   return reply({
+    research,researchStatus,researchMessage,
+    documentedCount:documented.length,
+    exploratoryCount:results.length-documented.length,
     provider:'crop-sector-directory',
     commodity:parsed.commodity,
     country:parsed.country,
@@ -52,7 +103,7 @@ export async function GET(request:Request){
     sourceCoverage:cropProducerCoverage(),
     completeGlobalCoverage:false,
     liveCertificateVerified:false,
-    note:'Curated documented sourcing leads from several published directories, NOT a live ' +
+    note:'Curated documented sourcing leads plus optional, independently labelled exploratory data. NOT a live ' +
       'global supplier census or current independent verification. Association membership, ' +
       'market listings, product certificates and national marks have DIFFERENT evidentiary strength. ' +
       'They do not prove own-farm production, current certification, export eligibility, ' +
