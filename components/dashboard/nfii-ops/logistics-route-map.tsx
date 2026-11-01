@@ -73,7 +73,8 @@ export function LogisticsRouteMap({routes,selectedId,onSelect,locale}:Props){
         }).addTo(layers)
         line.bindTooltip((route.from+' → '+route.to+
           (route.via?' · '+route.via:'')+
-          (route.fidelity==='illustrative'?' · illustrative':' · routed geometry')))
+          (route.fidelity==='modelled_geometry'?' · computed ocean-grid estimate':
+          route.fidelity==='provider_geometry'?' · source API geometry':' · unverified')))
         line.on('click',()=>handler.current(route.id))
       }
       positions.push(format(route.origin),format(route.destination))
