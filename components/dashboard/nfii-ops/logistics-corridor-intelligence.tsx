@@ -27,6 +27,7 @@ type ModelResponse={
   sourceStatus:{searoutes:string;worldBank:string;marineWeather:string;googleRoad:string}
   sources:{searoutes:string|null;worldBank:string|null;marineWeather:string|null;googleRoad:string|null}
   dataWarnings:string[]
+  regionalHazards:{state:'available'|'unavailable';alerts:Array<{id:string;label:string;severity:string;near:string;distanceKm:number;sourceUrl:string}>;observedAt:string;sourceUrl:string}
   freightBenchmark:{status:string;message:string;quoteStatus:string;
     estimate:{amountMinQar:number;amountMaxQar:number;
       perKgMinQar:number;perKgMaxQar:number;daysMin:number|null;
@@ -36,8 +37,6 @@ type ModelResponse={
 }
 const format=(n:number|null,dp=1)=>n===null?'N/A':
   n.toLocaleString('en-US',{minimumFractionDigits:dp,maximumFractionDigits:dp})
-const color=(band:string)=>band==='high'?'bg-critical':band==='elevated'?
-  'bg-warning':'bg-sage-600'
 type ShipmentChoice={id:string;title:string;country:string;commodity:string;tonnes:number}
 
 export function LogisticsCorridorIntelligence({
@@ -152,7 +151,6 @@ export function LogisticsCorridorIntelligence({
   }
   const displayedMapRoutes=useMemo(()=>data?.mapRoutes??previewRouteMapOverlays(country),[data,country])
   const chosen=data?.routes.find(r=>r.id===selected)
-  const maxRisk=Math.max(...(data?.routes.map(r=>r.riskScore)??[]),100)
   const maxTime=Math.max(...(data?.routes.map(r=>r.estimatedDays??0)??[]),1)
   const quoted=data?.routes.filter(r=>r.freightTotalQar!==null)??[]
   const maxCost=Math.max(...quoted.map(r=>r.freightQarKg??0),.001)
@@ -298,8 +296,8 @@ export function LogisticsCorridorIntelligence({
                   {tx('Interactive import route map · origin to Qatar','خريطة تفاعلية لمسارات الاستيراد إلى قطر')}
                 </h3>
                 <p className="text-[11px] text-content-soft">
-                  {tx('Select a line or a route below. Solid sea paths are API geometry; dashed paths only illustrate candidate connections.',
-                    'اختر خطاً على الخريطة. الخطوط المتقطعة توضيحية وليست مسارات مؤكدة.')}
+                  {tx('Only API-provided route geometries are drawn. Otherwise the map shows endpoints without a fictional route.',
+                    'تُعرض المسارات المستندة إلى API فقط؛ وما عدا ذلك نقاط دون خطوط وهمية.')}
                 </p>
               </div>
               <span className="rounded-full border border-line px-2.5 py-1 text-[10px] text-content-soft">
@@ -372,30 +370,43 @@ export function LogisticsCorridorIntelligence({
       <div className="grid gap-4 xl:grid-cols-2">
         <div className="rounded-md border border-line p-3">
           <h3 className="text-[12px] font-semibold text-content">
-            {tx('Screening risk · index, NOT probability','مؤشر مخاطر الفحص، وليس احتمالاً')}
+            {tx('Observed hazard signals · not a risk percentage','إشارات الأخطار المرصودة')}
           </h3>
-          <p className="mt-1 text-[10px] text-content-soft">{tx('Lower is preferable. Missing live evidence increases uncertainty.','الأقل أفضل. غياب البيانات يزيد عدم اليقين.')}</p>
-          <div className="mt-3 space-y-2">
-            {data.routes.map(route=><div key={route.id} className="grid grid-cols-[105px_1fr_38px] items-center gap-2">
-              <span className="truncate text-[11px]" title={route.id}>{route.mode} {route.via?'via '+route.via.split(' ')[0]:''}</span>
-              <div className="h-3 rounded-full bg-muted">
-                <div className={'h-full rounded-full '+color(route.riskBand)}
-                  style={{width:(route.riskScore/maxRisk*100)+'%'}}/>
-              </div>
-              <span className="text-right text-[11px] tabular-nums">{route.riskScore}</span>
-            </div>)}
-          </div>
+          <p className="mt-1 text-[10px] text-content-soft">
+            {tx('Recent GDACS red/orange alerts within 400 km of the origin gateway or Qatar. Not a route-wide disruption forecast.',
+              'تنبيهات GDACS القريبة ولا تمثل توقعات المخاطر على المسار كاملاً.')}
+          </p>
+          {data.regionalHazards.state==='unavailable'?
+            <p className="mt-3 text-[12px] text-warning-strong">{tx('Source unavailable · risk unknown','المصدر غير متاح')}</p>:
+            data.regionalHazards.alerts.length?
+            <div className="mt-3 space-y-2">
+              {data.regionalHazards.alerts.map(alert=><div key={alert.id}
+                className="rounded-md border border-warning-line bg-warning-soft p-2 text-[11px]">
+                <strong>{alert.severity.toUpperCase()}</strong> · {alert.label}
+                <a className="ms-2 text-sage-700 underline" href={alert.sourceUrl}
+                  rel="noopener noreferrer" target="_blank">GDACS</a>
+              </div>)}
+            </div>:
+            <p className="mt-3 text-[12px] text-content">
+              {tx('No nearby orange/red point alerts detected in this query. This does NOT establish a safe route.',
+                'لم توجد تنبيهات قريبة؛ هذا لا يثبت أن المسار آمن.')}
+            </p>}
+          <p className="mt-3 text-[10px] text-content-soft">
+            {tx('Pending verification: operator schedule, cargo insurance, transshipments, border access and cold chain.',
+              'تحتاج المواعيد والتأمين والعبور والتبريد إلى التحقق.')}
+          </p>
         </div>
         <div className="rounded-md border border-line p-3">
           <h3 className="text-[12px] font-semibold text-content">
-            {tx('Estimated journey · days','مدة الرحلة التقديرية بالأيام')}
+            {tx('Provider-sourced route duration · days','مدة الرحلة من المصدر · أيام')}
           </h3>
           <p className="mt-1 text-[10px] text-content-soft">
-            {tx('Air/road are model assumptions; sea stays N/A without routed data.',
-              'الجوي والبري تقدير نموذجي؛ البحري غير متاح دون بيانات الملاحة.')}
+            {tx('Only published SeaRoutes theoretical durations are displayed. Missing airline and road carrier ETAs remain N/A.',
+              'تظهر فقط المدد من المصادر. أوقات شركات النقل غير المتوفرة تبقى غير معروفة.')}
           </p>
           <div className="mt-3 space-y-2">
-            {data.routes.map(route=><div key={route.id} className="grid grid-cols-[105px_1fr_46px] items-center gap-2">
+            {data.routes.map(route=><div key={route.id}
+              className="grid grid-cols-[105px_1fr_46px] items-center gap-2">
               <span className="truncate text-[11px]">{route.mode} {route.via?'via '+route.via.split(' ')[0]:''}</span>
               <div className="h-3 rounded-full bg-muted">
                 {route.estimatedDays!==null&&<div className="h-full rounded-full bg-sage-600"
@@ -444,9 +455,9 @@ export function LogisticsCorridorIntelligence({
             <td className="p-2 text-right tabular-nums">{format(route.distanceKm,0)}</td>
             <td className="p-2 text-right tabular-nums">{format(route.estimatedDays)}</td>
             <td className="p-2 text-right tabular-nums">{format(route.freightQarKg,3)}</td>
-            <td className="p-2 text-right">{route.riskScore}/100</td>
+            <td className="p-2 text-right">{route.riskBand==='reported_alert'?'Regional alert':route.riskBand==='unavailable'?'Unknown':'No nearby alert'}</td>
             <td className="p-2">{route.quality==='route_api'?
-              'SeaRoutes geometry':'Screening only'}</td>
+              'Routing API evidence':'Unverified itinerary'}</td>
             <td className="p-2"><button type="button"
               onClick={()=>setSelected(route.id)}
               className="font-medium text-sage-700 underline">{tx('Details','تفاصيل')}</button></td>
