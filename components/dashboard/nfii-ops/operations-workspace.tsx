@@ -27,7 +27,7 @@ import {
   OPERATION_FIELDS, type NfiiOperationKind, type OperationField,
 } from '@/lib/nfii/operations-validation'
 import {
-  EMPTY_OPERATIONS, operationalVolume, reservePosition, previewOperationsSnapshot,
+  EMPTY_OPERATIONS, operationalVolume, reservePosition,
   type OperationsArea, type OperationsRow, type OperationsResponse,
   type OperationsSnapshot,
 } from '@/lib/nfii/operations-types'
@@ -275,8 +275,6 @@ export function NfiiOperationsWorkspace({focus}:{focus:OperationsArea}){
   const [error,setError]=useState('')
   const [notice,setNotice]=useState('')
   const [truncated,setTruncated]=useState<string[]>([])
-  const [forcePreview,setForcePreview]=useState(false)
-  const [preferLive,setPreferLive]=useState(false)
   const [procurementTab,setProcurementTab]=useState<ProcurementTab>('overview')
   const [recordSearch,setRecordSearch]=useState('')
   const [recordStatus,setRecordStatus]=useState('all')
@@ -320,14 +318,10 @@ export function NfiiOperationsWorkspace({focus}:{focus:OperationsArea}){
   },[orgId,orgLoading,reload])
 
   const today=qatarDate()
-  const illustrative=useMemo(()=>previewOperationsSnapshot(today),[today])
-  const liveHasRecords=snapshot!==null && Object.values(snapshot).some(rows=>rows.length>0)
-  // No SQL installation is needed to explore the pre-existing illustrative fixture.
-  // An authorized organization with zero records must still be able to
-  // enter Live mode and create its first supplier.
-  const isPreview=forcePreview || (!orgLoading && !loading &&
-    (!orgId || snapshot===null || (!liveHasRecords && !preferLive)))
-  const s=isPreview?illustrative:(snapshot??EMPTY_OPERATIONS)
+  const liveHasRecords=snapshot!==null&&Object.values(snapshot).some(rows=>rows.length>0)
+  // Never show synthetic contracts, shipments or reserves in live operations.
+  const isPreview=!orgId||snapshot===null
+  const s=snapshot??EMPTY_OPERATIONS
   const canEdit=!isPreview && (ctx?.hasPermission('supply.edit')??false)
   const canPropose=!isPreview && (ctx?.hasPermission('decisions.propose')??false)
   const canApprove=!isPreview && (ctx?.hasPermission('decisions.approve')??false)
@@ -602,47 +596,32 @@ export function NfiiOperationsWorkspace({focus}:{focus:OperationsArea}){
         <div className="nfii-panel flex flex-wrap items-center justify-between gap-3 px-4 py-3">
           <div>
             <p className="text-[12px] font-medium text-content">
-              {isPreview ? tx('Illustrative Qatar dataset', 'بيانات قطر التوضيحية')
-                : tx('Authorized organization records', 'سجلات المؤسسة المخولة')}
+              {isPreview?tx('Organization register unavailable','سجل المؤسسة غير متاح'):
+                tx('Authorized organization records','سجلات المؤسسة المخولة')}
             </p>
             <p className="mt-1 text-[11px] text-content-soft">
-              {isPreview
-                ? tx('Reference data from the existing NFII example. Not verified contracts, shipments or reserves. View-only, no SQL required.',
-                    'بيانات توضيحية موجودة في NFII وليست عقوداً أو شحنات أو احتياطيات موثقة. للعرض فقط دون SQL.')
-                : liveHasRecords
-                  ?tx('Data loaded from your organization in Supabase.',
-                      'البيانات محملة من مؤسستك في Supabase.')
-                  :tx('Live register is empty. Start by registering your first supplier.',
-                      'السجل الفعلي فارغ. ابدأ بتسجيل أول مورد.')}
+              {!orgId
+                ?tx('Choose an authorized organization to see actual contracts, shipments and reserves.',
+                    'اختر مؤسسة مصرحاً لها لعرض العقود والشحنات والاحتياطيات الفعلية.')
+                :snapshot===null
+                  ?tx('No accessible live register. Synthetic sample records are not used.',
+                      'لا يمكن الوصول إلى السجل الفعلي، ولا تُستخدم بيانات تجريبية بدلاً منه.')
+                  :liveHasRecords
+                    ?tx('Data loaded from your organization in Supabase.',
+                        'تم تحميل البيانات من مؤسستك في Supabase.')
+                    :tx('Organization register is empty. Add an actual supplier to begin.',
+                        'سجل المؤسسة فارغ. أضف مورداً فعلياً للبدء.')}
             </p>
-            {isPreview && error && (
-              <p className="mt-1 text-[11px] text-warning-strong">
-                {tx('Live data unavailable: ', 'البيانات الحية غير متاحة: ')}{error}
-              </p>
-            )}
           </div>
-          <div className="flex flex-wrap gap-2">
-            <button type="button" className="nfii-button nfii-button-secondary"
-              aria-pressed={isPreview} onClick={()=>{
-                setForcePreview(true)
-                setPreferLive(false)
-                setFormOpen(false)
-              }}>
-              {tx('Example data', 'بيانات توضيحية')}
-            </button>
-            <button type="button" className="nfii-button nfii-button-secondary"
-              disabled={!orgId || snapshot===null}
-              aria-pressed={!isPreview} onClick={()=>{
-                setForcePreview(false)
-                setPreferLive(true)
-              }}>
-              {tx('Live data', 'بيانات فعلية')}
-            </button>
-          </div>
+          <button type="button" className="nfii-button nfii-button-secondary"
+            disabled={!orgId||loading} onClick={()=>setReload(n=>n+1)}>
+            <RefreshCw className="h-3.5 w-3.5"/>
+            {tx('Refresh actual records','تحديث السجلات الفعلية')}
+          </button>
         </div>
       )}
 
-      {error&&!isPreview&&<div role="alert" className="rounded-lg border border-warning-line bg-warning-soft p-3 text-[12px] text-critical">
+      {error&&<div role="alert" className="rounded-lg border border-warning-line bg-warning-soft p-3 text-[12px] text-critical">
         {error}
       </div>}
       {notice&&<div role="status" className="rounded-lg border border-line-accent bg-cream-100 p-3 text-[12px] text-content-accent">
@@ -734,11 +713,10 @@ export function NfiiOperationsWorkspace({focus}:{focus:OperationsArea}){
               <div className="flex flex-wrap items-center justify-between gap-2 border-b border-line px-4 py-3">
                 <div>
                   <h2 className="text-[14px] font-semibold text-content">
-                    {isPreview?tx('Example records','سجلات توضيحية'):tx('Operational register','السجل التشغيلي')}
+                    {tx('Operational register','السجل التشغيلي')}
                   </h2>
                   <p className="mt-1 text-[11px] text-content-soft">
-                    {isPreview?tx('Illustrative links and workflow states, not audited transactions.',
-                      'روابط وحالات عمل توضيحية، وليست معاملات مدققة.'):tx('Tenant-specific records and their actual review states.',
+                    {tx('Tenant-specific records and their actual review states.',
                       'سجلات المؤسسة وحالات مراجعتها الفعلية.')}
                   </p>
                 </div>
@@ -795,10 +773,8 @@ export function NfiiOperationsWorkspace({focus}:{focus:OperationsArea}){
                   <div className="nfii-empty">
                     {s[activeView].length>0
                       ?tx('No records match the selected filters.','لا توجد سجلات تطابق عوامل التصفية.')
-                      :isPreview
-                        ?tx('No example records in this section.','لا توجد سجلات توضيحية في هذا القسم.')
-                        :tx('No records yet. Use the form on the right to create the first one.',
-                            'لا توجد سجلات بعد. استخدم النموذج لإنشاء أول سجل.')}
+                      :tx('No accessible records in this section. Create an authorized entry to begin.',
+                            'لا توجد سجلات متاحة في هذا القسم؛ أنشئ إدخالاً مصرحاً به للبدء.')}
                   </div>
                 </div>
               ):(
@@ -899,8 +875,8 @@ export function NfiiOperationsWorkspace({focus}:{focus:OperationsArea}){
                 </div>
                 <div className="p-4">
                   <p className="mb-3 text-[11px] leading-relaxed text-content-soft">
-                    {isPreview?tx('This example is read-only. Switch to live records to create or approve operations.',
-                      'هذه البيانات للعرض فقط. انتقل إلى السجلات الفعلية لإنشاء أو اعتماد العمليات.'):focus==='procurement'
+                    {isPreview?tx('No accessible live organization register; changes and approvals are disabled.',
+                      'لا يوجد سجل مؤسسة فعلي متاح؛ التغييرات والموافقات معطلة.'):focus==='procurement'
                       ?formKind==='supplier'
                         ?tx('Check the legal name and country. Supplier approval must be independent.',
                             'تحقق من الاسم القانوني والدولة. يجب أن تكون الموافقة مستقلة.')
@@ -980,8 +956,8 @@ export function NfiiOperationsWorkspace({focus}:{focus:OperationsArea}){
                   {tx('Approval inbox','صندوق الموافقات')}
                 </h3>
                 <p className="mt-1 text-[11px] text-content-soft">
-                  {isPreview?tx('Illustrative workflow only; no approvals exist in Supabase.',
-                    'سير عمل توضيحي؛ لا توجد موافقات فعلية في Supabase.'):tx('Proposals are inactive until independently approved.',
+                  {isPreview?tx('No accessible organization register; no approvals can be inferred.',
+                    'لا يمكن استنتاج موافقات دون سجل مؤسسة متاح.'):tx('Proposals are inactive until independently approved.',
                     'لا تصبح الطلبات فعالة حتى تتم الموافقة عليها بشكل مستقل.')}
                 </p>
                 <div className="mt-3 space-y-2">
