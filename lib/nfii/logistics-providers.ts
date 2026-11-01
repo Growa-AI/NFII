@@ -1,5 +1,6 @@
 import {getExportHub,QATAR_PORT,type GeoPoint} from './logistics-lanes'
 import type {RouteInputs} from './logistics-screening'
+import {readSeaRouteGeometry,type GeoLine} from './logistics-route-geometry'
 import {fetchRoadEvidence,type RoadEvidence} from './logistics-road-api'
 
 type Obj=Record<string,unknown>
@@ -15,7 +16,7 @@ export type ExternalLogistics={
  refs:{searoutes:string|null;worldBank:string|null;marineWeather:string|null;googleRoad:string|null}
  messages:string[]
 }
-export function extractSeaRoute(data:unknown):{km:number;durationDays:number|null}|null{
+export function extractSeaRoute(data:unknown):{km:number;durationDays:number|null;geometry:GeoLine|null}|null{
   const root=obj(data)
   const features=Array.isArray(root.features)?root.features:[]
   const feature=obj(features[0])
@@ -24,7 +25,7 @@ export function extractSeaRoute(data:unknown):{km:number;durationDays:number|nul
   const duration=num(p.duration)??num(root.duration)
   if(dist===null||dist<1000||dist>100_000_000)return null
   return {km:dist/1000,durationDays:duration===null||duration===0?
-    null:duration/86400000}
+    null:duration/86400000,geometry:readSeaRouteGeometry(data)}
 }
 export function seaRoutesRequest(code:string,via:'direct'|'jebel'|'salalah'){
   const hub=getExportHub(code)
@@ -54,15 +55,15 @@ export async function fetchSeaRoutes(country:string):Promise<Pick<ExternalLogist
       if(!result.ok)return null
       const json=await result.json() as unknown
       const parsed=extractSeaRoute(json)
-      return parsed?{id,km:parsed.km,durationDays:parsed.durationDays,
+      return parsed?{id,km:parsed.km,durationDays:parsed.durationDays,geometry:parsed.geometry,
         routeUrl:'https://developer.searoutes.com/reference/getsearoute'}:null
     }catch{return null}
   }))
   const records=resolved.filter((r):r is NonNullable<typeof r>=>Boolean(r))
   if(!records.length)return {seaRoutes:null,messages:['SeaRoutes returned no usable geometries; departure schedule and ETA unavailable.'],
     state:'unavailable',source:null}
-  const seaRoutes:Record<string,{km:number;durationDays:number|null;routeUrl:string}>=Object.fromEntries(records.map(r=>[r.id,{
-    km:r.km,durationDays:r.durationDays,routeUrl:r.routeUrl}]))
+  const seaRoutes:Record<string,{km:number;durationDays:number|null;routeUrl:string;geometry:GeoLine|null}>=Object.fromEntries(records.map(r=>[r.id,{
+    km:r.km,durationDays:r.durationDays,geometry:r.geometry,routeUrl:r.routeUrl}]))
   return {seaRoutes:seaRoutes as NonNullable<ExternalLogistics['seaRoutes']>,
     messages:records.length<desired.length?['Some sea corridor variants were unavailable.']:[],
     state:'available',source:'https://developer.searoutes.com/reference/getsearoute'}
