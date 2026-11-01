@@ -174,7 +174,7 @@ export function CommodityWorkspace(){
       {loading&&<p role="status" className="text-[12px] text-content-soft">
         {tx('Checking available organization sources…','جارٍ التحقق من مصادر المؤسسة…')}
       </p>}
-      {mode==='live'&&(!balance||balance.status!=='complete')&&(
+      {(!balance||balance.status!=='complete')&&(
         <div className="rounded-lg border border-warning-line bg-warning-soft p-3 text-[12px] text-content">
           <strong>{tx('Verified source data are incomplete.','بيانات المصادر الموثقة غير مكتملة.')}</strong>
           <p className="mt-1 text-content-soft">{foodError||
