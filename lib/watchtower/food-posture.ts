@@ -3,7 +3,7 @@
  * Coverage thresholds are product screening heuristics, NOT government policy.
  */
 import { addFoodDays, calculateFoodBalance, type FoodBalanceResult } from '@/lib/food-security/balance'
-import { buildDemoFoodBalanceInput } from '@/lib/food-security/demo-data'
+import { buildQatarIllustrativeFoodBalanceInput } from '@/lib/food-security/demo-data'
 import { COMMODITY_CATALOG } from '@/lib/platform/commodity-catalog'
 import type { CommodityDefinition } from '@/lib/platform/commodity-catalog'
 
@@ -161,7 +161,7 @@ export function buildIllustrativeFoodPosture(fromDate: string, days: 7 | 30 | 90
   const toDate = addFoodDays(fromDate, days - 1)
   const entries: FoodPostureEntry[] = COMMODITY_CATALOG.map(commodity => ({
     commodity,
-    balance: calculateFoodBalance(buildDemoFoodBalanceInput(commodity.id, fromDate, days)),
+    balance: calculateFoodBalance(buildQatarIllustrativeFoodBalanceInput(commodity.id, fromDate, days)),
     latestReviewedAt: null,
   }))
   return buildFoodPosture({

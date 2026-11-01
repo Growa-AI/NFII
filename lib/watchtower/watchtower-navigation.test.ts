@@ -9,6 +9,7 @@ describe('NFII Watchtower navigation clarity',()=>{
     expect(ui).toContain("activeSection === 'food' && <WatchtowerFoodCommandCenter />")
     expect(ui).toContain("activeSection === 'operations' && <WatchtowerOperationsPulse />")
     expect(ui).toContain("activeSection === 'scenarios' && <WatchtowerScenarioRoom />")
+    expect(ui).toContain("activeSection === 'agents' && <WatchtowerAgentOperationsRoom />")
   })
   it('supports deep links and keyboard-accessible active tabs',()=>{
     expect(ui).toContain("window.location.hash")

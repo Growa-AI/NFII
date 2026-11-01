@@ -3,13 +3,14 @@
 import Link from 'next/link'
 import { useEffect, useState } from 'react'
 import {
-  ArrowUpRight, Building2, FlaskConical, Network, ShieldCheck, Wheat,
+  ArrowUpRight, Bot, Building2, FlaskConical, Network, ShieldCheck, Wheat,
 } from 'lucide-react'
 import { useI18n } from '@/lib/i18n'
 import { useOrganization } from '@/hooks/use-organization'
 import { WatchtowerFoodCommandCenter } from '@/components/dashboard/watchtower/food-command-center'
 import { WatchtowerScenarioRoom } from '@/components/dashboard/watchtower/scenario-room'
 import { WatchtowerOperationsPulse } from '@/components/dashboard/watchtower/operations-pulse'
+import { WatchtowerAgentOperationsRoom } from '@/components/dashboard/watchtower/agent-operations-room'
 import { PageHeader } from '@/components/brand/layout'
 
 /**
@@ -26,13 +27,14 @@ export function WatchtowerWorkspace() {
   const ar = locale === 'ar'
   const tx = (english: string, arabic: string) => ar ? arabic : english
 
-  type Section = 'food' | 'operations' | 'scenarios'
+  type Section = 'food' | 'operations' | 'scenarios' | 'agents'
   const [activeSection, setActiveSection] = useState<Section>('food')
   useEffect(() => {
     function syncSectionFromHash() {
       const hash = window.location.hash
       if (hash === '#watchtower-operations') setActiveSection('operations')
       else if (hash === '#watchtower-scenarios') setActiveSection('scenarios')
+      else if (hash === '#watchtower-agents') setActiveSection('agents')
       else if (hash === '#watchtower-response' || hash === '#watchtower-food')
         setActiveSection('food')
     }
@@ -44,7 +46,8 @@ export function WatchtowerWorkspace() {
   function selectSection(section: Section) {
     setActiveSection(section)
     const hash = section === 'food' ? '#watchtower-food'
-      : section === 'operations' ? '#watchtower-operations' : '#watchtower-scenarios'
+      : section === 'operations' ? '#watchtower-operations'
+      : section === 'agents' ? '#watchtower-agents' : '#watchtower-scenarios'
     window.history.replaceState(null, '', hash)
   }
 
@@ -52,6 +55,7 @@ export function WatchtowerWorkspace() {
     { id: 'food' as const, name: tx('Food situation & risk', 'الوضع الغذائي والمخاطر'), icon: Wheat },
     { id: 'operations' as const, name: tx('Supply operations', 'عمليات الإمداد'), icon: Network },
     { id: 'scenarios' as const, name: tx('Scenario room', 'غرفة السيناريوهات'), icon: FlaskConical },
+    { id: 'agents' as const, name: tx('Agent operations', 'عمليات الوكلاء'), icon: Bot },
   ] as const
 
   return (
@@ -62,8 +66,8 @@ export function WatchtowerWorkspace() {
             eyebrow={tx('Food security intelligence', 'معلومات الأمن الغذائي')}
             title={tx('Food Security Watchtower', 'برج مراقبة الأمن الغذائي')}
             subtitle={tx(
-              'A single operational view for reviewed commodity balances, supply-chain readiness and disruption scenarios. Indicators remain scoped to your authorized organization.',
-              'واجهة تشغيلية موحدة للموازين الغذائية المراجعة وجاهزية سلسلة الإمداد وسيناريوهات الاضطرابات. المؤشرات مقيدة بالمؤسسة المخولة.'
+              'Explore food balance, supply operations, scenarios and a read-only specialist-agent rehearsal. Verified and illustrative inputs remain clearly separated.',
+              'استكشف الميزان الغذائي وعمليات الإمداد والسيناريوهات ومحاكاة الوكلاء المتخصصين. تُفصل المدخلات الموثقة عن التوضيحية بوضوح.'
             )}
             actions={
               <div className="flex flex-col items-start gap-1 text-[12px] md:items-end">
@@ -119,6 +123,7 @@ export function WatchtowerWorkspace() {
         {activeSection === 'food' && <WatchtowerFoodCommandCenter />}
         {activeSection === 'operations' && <WatchtowerOperationsPulse />}
         {activeSection === 'scenarios' && <WatchtowerScenarioRoom />}
+        {activeSection === 'agents' && <WatchtowerAgentOperationsRoom />}
 
         <footer className="flex flex-wrap items-start gap-2 border-t border-dotted border-line pt-3 text-[11px] text-content-soft">
           <ShieldCheck className="mt-0.5 h-3.5 w-3.5 shrink-0" aria-hidden="true" />

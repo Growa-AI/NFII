@@ -150,7 +150,7 @@ describe('Illustrative food posture isolation',()=>{
     expect(p.scope).toBe('illustrative')
     expect(p.totalCommodities).toBe(COMMODITY_CATALOG.length)
     expect(p.assessedCount).toBe(COMMODITY_CATALOG.length)
-    expect(p.commodities.every(c=>c.evidenceSourceRefs.some(r=>r.startsWith('synthetic-fixture:')))).toBe(true)
+    expect(p.commodities.every(c=>c.evidenceSourceRefs.some(r=>r.startsWith('SIMQA26/SYNTHETIC')))).toBe(true)
     expect(p.caveats.join(' ')).toContain('ILLUSTRATIVE EXAMPLE ONLY')
     expect(p.pendingReviewCount).toBeNull()
   })
