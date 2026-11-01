@@ -89,6 +89,12 @@ const ISO3_TO_2:Record<string,string>={
 }
 
 
+export function comtradeCountryCodeFromIso(iso:string):string|null{
+  const code=iso.trim().toUpperCase()
+  const normalized=ISO3_TO_2[code]??code
+  return /^[A-Z]{2}$/.test(normalized)?normalized:null
+}
+
 export function validateProcurementQuery(params:URLSearchParams):
   |{ok:true;value:{
     provider:ProcurementProvider;query:string;country:string;
