@@ -296,12 +296,12 @@ export function LogisticsCorridorIntelligence({
                   {tx('Interactive import route map · origin to Qatar','خريطة تفاعلية لمسارات الاستيراد إلى قطر')}
                 </h3>
                 <p className="text-[11px] text-content-soft">
-                  {tx('Only API-provided route geometries are drawn. Otherwise the map shows endpoints without a fictional route.',
-                    'تُعرض المسارات المستندة إلى API فقط؛ وما عدا ذلك نقاط دون خطوط وهمية.')}
+                  {tx('Maritime tracks use SeaRoutes when available, otherwise a computed ocean-network route. No carrier schedules are implied.',
+                    'تُعرض مسارات SeaRoutes أو مسارات بحرية محسوبة، دون اعتبارها حجوزات مؤكدة.')}
                 </p>
               </div>
               <span className="rounded-full border border-line px-2.5 py-1 text-[10px] text-content-soft">
-                {displayedMapRoutes.filter(r=>r.fidelity==='provider_geometry').length} {tx('routed geometries','مسارات فعلية هندسياً')}
+                {displayedMapRoutes.filter(r=>r.paths.length>0).length} {tx('calculated maritime routes','مسارات بحرية محسوبة')}
               </span>
             </div>
             <LogisticsRouteMap routes={displayedMapRoutes} selectedId={data?selected:previewSelected}
@@ -359,7 +359,8 @@ export function LogisticsCorridorIntelligence({
           {label:tx('Food requirement','متطلبات الغذاء'),value:data.context.coldChain?
             tx('Temperature controlled','تبريد'):tx('Dry / ambient','جاف')},
           {label:tx('Sea routes provider','مزود الطريق البحري'),
-            value:data.sourceStatus.searoutes==='available'?'SeaRoutes':'Not verified'},
+            value:data.sourceStatus.searoutes==='available'?'SeaRoutes':
+              data.sourceStatus.searoutes==='estimated'?'Ocean network · estimate':'Unavailable'},
           {label:tx('Carrier freight rates','أسعار نقل من الشركات'),
             value:quoted.length?String(new Set(quoted.map(r=>r.mode)).size)+' supplied':tx('None supplied','غير متوفرة')},
         ].map(item=><div key={item.label} className="rounded-md border border-line bg-background p-3">
@@ -398,10 +399,10 @@ export function LogisticsCorridorIntelligence({
         </div>
         <div className="rounded-md border border-line p-3">
           <h3 className="text-[12px] font-semibold text-content">
-            {tx('Provider-sourced route duration · days','مدة الرحلة من المصدر · أيام')}
+            {tx('Maritime sailing time · days (provider or estimate)','مدة الرحلة من المصدر · أيام')}
           </h3>
           <p className="mt-1 text-[10px] text-content-soft">
-            {tx('Only published SeaRoutes theoretical durations are displayed. Missing airline and road carrier ETAs remain N/A.',
+            {tx('SeaRoutes times or ocean-network estimates at assumed 14 knots; excludes port handling. Air/road carrier ETA stays N/A.',
               'تظهر فقط المدد من المصادر. أوقات شركات النقل غير المتوفرة تبقى غير معروفة.')}
           </p>
           <div className="mt-3 space-y-2">
@@ -457,7 +458,7 @@ export function LogisticsCorridorIntelligence({
             <td className="p-2 text-right tabular-nums">{format(route.freightQarKg,3)}</td>
             <td className="p-2 text-right">{route.riskBand==='reported_alert'?'Regional alert':route.riskBand==='unavailable'?'Unknown':'No nearby alert'}</td>
             <td className="p-2">{route.quality==='route_api'?
-              'Routing API evidence':'Unverified itinerary'}</td>
+              route.sourceUrl?.includes('arcnautical')?'Ocean network estimate':'Routing API evidence':'Unverified itinerary'}</td>
             <td className="p-2"><button type="button"
               onClick={()=>setSelected(route.id)}
               className="font-medium text-sage-700 underline">{tx('Details','تفاصيل')}</button></td>
