@@ -90,7 +90,7 @@ export function buildScreenedRoutes(inputs:RouteInputs):ScreenedRoute[]{
         inputs.waves+'m; not full voyage exposure')
     if(safeRate===null)
       riskDrivers.push('Actual carrier price not available for this mode')
-    const riskBand=coverage?.state!=='available'?'unavailable':
+    const riskBand:ScreenedRoute['riskBand']=coverage?.state!=='available'?'unavailable':
       recent.length?'reported_alert':'no_nearby_reported_alert'
     return {
       id:route.id,country:origin,commodity:inputs.commodity,mode:route.mode,
