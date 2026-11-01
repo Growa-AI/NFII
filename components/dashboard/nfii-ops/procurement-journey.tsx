@@ -20,8 +20,8 @@ type ProcurementStep = {
 }
 const WORKFLOW:readonly ProcurementStep[]=[
   {id:'discover',en:'Find suppliers',ar:'البحث عن موردين',
-    detailEn:'Search real global sources and build a shortlist',
-    detailAr:'ابحث في المصادر العالمية وأنشئ قائمة مرشحين',
+    detailEn:'Choose a crop and inspect registry-backed organizations',
+    detailAr:'اختر المحصول واستعرض المنظمات المسجلة في الأدلة',
     icon:Search},
   {id:'suppliers',en:'Qualify suppliers',ar:'تأهيل الموردين',
     detailEn:'Check legal identity, submit and review supplier records',
@@ -300,8 +300,8 @@ export function ProcurementStageHeading({
   const label:Record<ProcurementTab,[string,string,string,string]>={
     overview:['Overview','نظرة عامة','Your sourcing workflow in one place','مسار التوريد في مكان واحد'],
     discover:['Find potential suppliers','البحث عن موردين محتملين',
-      'Global research. Discover businesses, identify import origins, shortlist candidates.',
-      'بحث عالمي عن الشركات ومناشئ الواردات والمرشحين.'],
+      'Start with a crop and documented organization-product records. Then check legal identity and import markets.',
+      'ابدأ بالمحصول والمنظمات المدرجة في سجلات المنتجات، ثم تحقق من الهوية وأسواق الاستيراد.'],
     suppliers:['Supplier register','سجل الموردين',
       'Register and independently approve a legal supplier before using it in a contract.',
       'سجل المورد القانوني واعتمده بشكل مستقل قبل إنشاء عقد.'],

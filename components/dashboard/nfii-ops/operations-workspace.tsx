@@ -13,6 +13,7 @@ import { useI18n } from '@/lib/i18n'
 import { COMMODITY_CATALOG } from '@/lib/platform/commodity-catalog'
 import { PageHeader } from '@/components/brand/layout'
 import { GlobalSupplierResearch } from '@/components/dashboard/nfii-ops/global-supplier-research'
+import { CropProducerDiscovery } from '@/components/dashboard/nfii-ops/crop-producer-discovery'
 import {
   ProcurementHome, ProcurementJourney, ProcurementStageHeading,
   procurementTabCollection, procurementTabKind, type ProcurementTab,
@@ -613,12 +614,35 @@ export function NfiiOperationsWorkspace({focus}:{focus:OperationsArea}){
       )}
 
       {focus==='procurement'&&procurementTab==='discover'&&(
-        <GlobalSupplierResearch
-          organizationId={orgId}
-          canCreateSupplier={Boolean(orgId)&&!isPreview&&canEdit}
-          existingSupplierCodes={s.suppliers.map(row=>row.code??'')}
-          onPrepareSupplier={prepareSupplier}
-        />
+        <div className="space-y-4">
+          <CropProducerDiscovery organizationId={orgId}/>
+          <details className="nfii-panel group p-4 md:p-5">
+            <summary className="flex cursor-pointer list-none items-center justify-between gap-3 text-[13px] font-medium text-content">
+              <span>
+                {tx('Additional research: legal entities, import markets and business leads',
+                  'بحث إضافي: الكيانات القانونية وأسواق الاستيراد والأنشطة التجارية')}
+              </span>
+              <span className="text-[11px] text-sage-700 group-open:hidden">
+                {tx('Expand','توسيع')}
+              </span>
+              <span className="hidden text-[11px] text-sage-700 group-open:inline">
+                {tx('Collapse','طي')}
+              </span>
+            </summary>
+            <p className="mt-2 text-[11px] leading-relaxed text-content-soft">
+              {tx('These supplementary tools are not a crop-to-grower directory: GLEIF checks legal identity, UN Comtrade shows countries, and Google Places lists businesses.',
+                'هذه أدوات مساندة وليست دليلاً للمنتجين حسب المحصول: يراجع GLEIF الهوية، وتعرض UN Comtrade البلدان، ويسرد Google Places الأنشطة التجارية.')}
+            </p>
+            <div className="mt-4">
+              <GlobalSupplierResearch
+                organizationId={orgId}
+                canCreateSupplier={Boolean(orgId)&&!isPreview&&canEdit}
+                existingSupplierCodes={s.suppliers.map(row=>row.code??'')}
+                onPrepareSupplier={prepareSupplier}
+              />
+            </div>
+          </details>
+        </div>
       )}
 
       {orgLoading||loading?(

@@ -167,3 +167,79 @@ disabled until the prerequisite is met.
 Every stage offers its own local search and status filter. Audit logs and
 unrelated modules do not crowd the current task. Headings and guidance are
 available in English and Arabic, retaining the Growa palette and components.
+
+
+## Crop-first supplier discovery (2026-11)
+
+**Primary user question:** "I need wheat / rice / tomatoes: which named
+organizations have reliable product-level evidence?" A company-name match
+in GLEIF, a generic Google listing or a Qatar import-country record does not
+answer it. Procurement > Find suppliers now opens a **crop-first source
+section** before the older corporate identity and trade-market tools.
+
+The crop-first endpoint
+\`GET /api/nfii/procurement/crop-producers?commodity=rice&country=IN\`
+returns a clearly labeled **limited snapshot of real entries** transcribed
+from the publicly published [FairTSA certified-products directory]
+(https://www.fairtsa.org/products), consulted 2026-11-01. It does not pretend
+to be FairTSA's live API and does not fetch real-time certificate status.
+
+Each product-to-organization match exposes:
+- Listed organization and **exact matching product** (e.g. non-Basmati
+  rice paddy is retained as paddy, not magically finished rice).
+- Country, the listed certification body, producer ID and original FairTSA URL.
+- Explicit booleans showing **own-crop cultivation NOT independently proved**,
+  **certificate currently active NOT checked**, export qualification NOT
+  checked, commercially available stock UNKNOWN and supplier NOT approved.
+- An in-browser research shortlist with attribution; no Supplier table writes.
+
+**Published-source coverage is limited, not global:** 6 rice entries,
+3 barley, 2 wheat, 1 tomato, 1 milk; zero matches in this particular excerpt
+for cucumber, lettuce, dates or Capsicum pepper. A FairTSA entry labelled
+"Pepper" could refer to the spice, so it is intentionally **not** mapped to
+bell pepper. Other sources and other producers exist outside the excerpt.
+Multiple crops may map to the *same* organization (counts are not independent
+businesses). Records and spelling are tied to FairTSA's public published
+directory and need rechecking; **there is no claim the 2026 certificate is
+currently active**.
+
+The UI provides links to the authoritative
+[USDA Organic INTEGRITY Database](https://organic.ams.usda.gov/integrity/)
+(for certified product and CROPS scope search) and
+[GLOBALG.A.P. IT Platform](https://globalgap.org/what-we-offer/globalgap-it-platform/)
+(for product/producer and certificate verification). **They are external
+verification links, not connected search APIs in this delivery.** USDA
+certified operations can be agricultural producers OR handlers; GLOBALG.A.P.
+API needs a direct agreement/subscription. Neither is a universal registry
+of farms worldwide or guarantees commercial capacity.
+
+**Additional research** is moved into a collapsed panel. Existing GLEIF
+legal-name search, Google Places listing search and UN Comtrade import origins
+are still available but are explicitly described as supplementary, *not*
+proof that the entity itself grows a particular commodity.
+
+### Data-quality and authorization gates
+
+- The endpoint uses the existing authenticated session, validates crop and
+  country, and applies \`supply.view\` if a tenant is specified.
+- No new Supabase tables, migrations, credentials or permissions.
+- No raw upstream URL is accepted, no crawler/scraper or unauthenticated paid
+  API calls are used, and no fake producer is returned as a fallback.
+- Records have human-readable provenance and are not automatically transformed
+  into approved suppliers. To onboard, independently establish an entity's
+  identity, growing role, current certification, licenses, export capacity,
+  actual quantities and delivery capability.
+- Tests verify crop-specific matches, explicit non-coverage, country filters,
+  ambiguous pepper exclusion, non-certified status claims, auth and no writes.
+
+### Remaining work for production-scale coverage
+
+A **comprehensive crop → producer search across countries** requires a
+licensed source with a crop-by-site dataset, or an ingestion pipeline for
+USDA Organic INTEGRITY's official monthly export and, where licensed,
+GLOBALG.A.P.'s product/certificate API. Neither source is currently connected
+to the NFII server in this change; the 9-entry FairTSA extract is a narrow
+working example of **sourced names**, not a global farmer discovery service.
+An official open-API key and a current ingest dataset must be provisioned and
+verified before a service can honestly claim "live worldwide verified
+producers" in the UI.

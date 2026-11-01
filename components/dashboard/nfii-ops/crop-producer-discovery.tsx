@@ -1,0 +1,334 @@
+'use client'
+
+import {useRef,useState,type FormEvent} from 'react'
+import {
+  ArrowUpRight,ClipboardCheck,ExternalLink,FileCheck2,
+  Leaf,Loader2,Search,ShieldAlert,Trash2,
+} from 'lucide-react'
+import {useI18n} from '@/lib/i18n'
+import {COMMODITY_CATALOG} from '@/lib/platform/commodity-catalog'
+import {
+  FAIRTSA_REGISTRY_URL,FAIRTSA_EXCERPT_CHECKED,
+  GLOBALGAP_REGISTRY_URL,USDA_ORGANIC_REGISTRY_URL,
+  type CropProducerEvidence,
+} from '@/lib/nfii/crop-producer-directory'
+
+type CropResult={
+  provider:'fairtsa-excerpt'
+  commodity:string
+  country:string
+  excerptCheckedOn:string
+  sourceUrl:string
+  results:CropProducerEvidence[]
+  completeGlobalCoverage:false
+  liveCertificateVerified:false
+  note:string
+  sourceCoverage:Record<string,number>
+}
+
+const SEARCH_COUNTRIES=[
+  ['','All countries'],['IN','India'],['TH','Thailand'],
+  ['TR','Türkiye'],['QA','Qatar'],['EG','Egypt'],
+  ['PK','Pakistan'],['BR','Brazil'],['NL','Netherlands'],
+  ['ES','Spain'],['IT','Italy'],['SA','Saudi Arabia'],
+] as const
+
+export function CropProducerDiscovery({organizationId}:{organizationId:string|null}){
+  const {locale}=useI18n()
+  const ar=locale==='ar'
+  const tx=(en:string,arabic:string)=>ar?arabic:en
+  const [crop,setCrop]=useState('rice')
+  const [country,setCountry]=useState('')
+  const [data,setData]=useState<CropResult|null>(null)
+  const [queryLoading,setQueryLoading]=useState(false)
+  const [error,setError]=useState('')
+  const [shortlist,setShortlist]=useState<CropProducerEvidence[]>([])
+  const [copyStatus,setCopyStatus]=useState('')
+  const controller=useRef<AbortController|null>(null)
+
+  const invalidate=()=>{
+    controller.current?.abort()
+    controller.current=null
+    setQueryLoading(false)
+    setError('')
+    setData(null)
+    setCopyStatus('')
+  }
+
+  const search=async(event:FormEvent<HTMLFormElement>)=>{
+    event.preventDefault()
+    invalidate()
+    const abort=new AbortController()
+    controller.current=abort
+    setQueryLoading(true)
+    const params=new URLSearchParams({
+      commodity:crop,country,
+      ...(organizationId?{organizationId}:{}),
+    })
+    try{
+      const response=await fetch('/api/nfii/procurement/crop-producers?'+params,{
+        signal:abort.signal,cache:'no-store',
+      })
+      const body=await response.json() as CropResult & {error?:string}
+      if(!response.ok)throw Error(body.error??'Source cannot be consulted')
+      if(body.provider!=='fairtsa-excerpt'||body.commodity!==crop)
+        throw Error('Unexpected registry response')
+      if(!abort.signal.aborted)setData(body)
+    }catch(reason){
+      if(!abort.signal.aborted)setError(reason instanceof Error?reason.message:
+        'Certified product search unavailable')
+    }finally{
+      if(!abort.signal.aborted){
+        setQueryLoading(false)
+        controller.current=null
+      }
+    }
+  }
+
+  const toggle=(record:CropProducerEvidence)=>{
+    const key=record.recordId+':'+record.organizationName
+    setShortlist(items=>items.some(x=>x.recordId+':'+x.organizationName===key)
+      ?items.filter(x=>x.recordId+':'+x.organizationName!==key)
+      :items.length>=30?items:[...items,record])
+    setCopyStatus('')
+  }
+
+  const copy=async()=>{
+    if(!shortlist.length)return
+    const rows=[
+      ['Organization','Product listed','Country','Certifier',
+        'Registry reference','Registry source','Status'],
+      ...shortlist.map(record=>[
+        record.organizationName,record.matchedProduct,
+        record.countryName,record.certifier,record.recordId,
+        record.sourceUrl,'Current certificate and grower role NOT verified',
+      ]),
+    ]
+    try{
+      await navigator.clipboard.writeText(rows.map(row=>row.join('\t')).join('\n'))
+      setCopyStatus(tx('Research shortlist copied','تم نسخ قائمة البحث'))
+    }catch{
+      setCopyStatus(tx('Clipboard unavailable; use the registry links above.',
+        'النسخ غير متاح؛ استخدم روابط السجل أعلاه.'))
+    }
+  }
+
+  return <section aria-label={tx('Search producers by crop','البحث عن المنتجين حسب المحصول')}
+    className="nfii-panel space-y-4 p-4 md:p-5">
+    <div className="flex flex-wrap items-start justify-between gap-3">
+      <div className="flex items-start gap-3">
+        <span className="rounded-lg bg-cream-100 p-2.5">
+          <Leaf className="h-5 w-5 text-sage-700" aria-hidden="true"/>
+        </span>
+        <div>
+          <p className="text-[10px] font-semibold uppercase tracking-[.12em] text-sage-700">
+            {tx('START WITH A CROP · DOCUMENTED PRODUCT MATCHES',
+              'ابدأ بالمحصول · مطابقة المنتجات الموثقة')}
+          </p>
+          <h2 className="mt-1 text-[20px] font-medium text-content">
+            {tx('Find organizations associated with a crop',
+              'البحث عن مؤسسات مرتبطة بمحصول')}
+          </h2>
+          <p className="mt-1 max-w-[84ch] text-[12px] leading-relaxed text-content-soft">
+            {tx('Select a crop, not a company name. Results below are real names transcribed from a public certification-product directory, with the exact product, country, certifier and original record reference.',
+              'اختر المحصول وليس اسم شركة. الأسماء مأخوذة من دليل علني لمنتجات الاعتماد، مع المنتج والدولة وجهة التصديق والمرجع الأصلي.')}
+          </p>
+        </div>
+      </div>
+      <span className="rounded-full border border-warning-line bg-warning-soft px-3 py-1.5 text-[10px] font-medium text-warning-strong">
+        {tx('LIMITED PUBLISHED EXCERPT · NOT LIVE','مقتطف منشور محدود · غير مباشر')}
+      </span>
+    </div>
+
+    <form onSubmit={event=>void search(event)}
+      className="grid gap-3 rounded-xl border border-line bg-background p-4 md:grid-cols-[minmax(0,1.4fr)_minmax(0,.9fr)_auto] md:items-end">
+      <label className="space-y-1.5">
+        <span className="nfii-label">{tx('1. Select crop / food product','١. اختر المحصول / المنتج')}</span>
+        <select className="nfii-input min-h-11" value={crop}
+          onChange={event=>{invalidate();setCrop(event.target.value)}}>
+          {COMMODITY_CATALOG.map(item=><option key={item.id} value={item.id}>
+            {ar?item.nameAr:item.name}
+          </option>)}
+        </select>
+      </label>
+      <label className="space-y-1.5">
+        <span className="nfii-label">{tx('2. Country (optional)','٢. الدولة (اختياري)')}</span>
+        <select className="nfii-input min-h-11" value={country}
+          onChange={event=>{invalidate();setCountry(event.target.value)}}>
+          {SEARCH_COUNTRIES.map(([code,label])=><option key={code||'all'} value={code}>
+            {code?label:tx(label,'جميع الدول')}
+          </option>)}
+        </select>
+      </label>
+      <button type="submit" disabled={queryLoading}
+        className="nfii-button inline-flex min-h-11 items-center justify-center gap-2 disabled:opacity-40">
+        {queryLoading?<Loader2 className="h-4 w-4 animate-spin"/>:
+          <Search className="h-4 w-4"/>}
+        {queryLoading?tx('Searching…','جارٍ البحث…'):
+          tx('Find crop matches','بحث حسب المحصول')}
+      </button>
+    </form>
+
+    <p className="flex items-start gap-2 text-[11px] leading-relaxed text-content-soft">
+      <ShieldAlert className="mt-0.5 h-4 w-4 shrink-0 text-warning-strong"/>
+      {tx('A product listed in a certification directory does not prove that this organization itself grows the crop, has an active certificate today, can export to Qatar, or has stock for sale. Treat results as evidence-backed leads requiring independent checks.',
+        'وجود المنتج في دليل الاعتماد لا يعني أن المؤسسة تزرعه بنفسها أو أن الشهادة سارية أو يمكنها التصدير إلى قطر أو لديها مخزون للبيع. جميع النتائج مرشحون يحتاجون تحققاً مستقلاً.')}
+    </p>
+
+    {error&&<p role="alert" className="rounded-lg border border-warning-line bg-warning-soft p-3 text-[12px] text-critical">
+      {error}
+    </p>}
+
+    {!data&&!error&&!queryLoading&&
+      <p className="rounded-lg border border-line bg-muted/30 p-4 text-[12px] text-content-soft">
+        {tx('Choose a crop and press Find crop matches. No company-name keyword is required.',
+          'اختر محصولاً واضغط بحث حسب المحصول. لا يلزم إدخال اسم الشركة.')}
+      </p>}
+
+    {data&&<div className="space-y-3">
+      <div className="flex flex-wrap items-center justify-between gap-2 border-b border-line pb-3">
+        <div>
+          <p className="text-[13px] font-medium text-content">
+            {tx('Documented organization–product matches','مطابقات المؤسسة والمنتج الموثقة')}
+            <span className="ms-2 rounded-full border border-line bg-muted px-2 py-0.5 text-[11px] tabular-nums text-content">
+              {data.results.length}
+            </span>
+          </p>
+          <p className="mt-1 text-[10px] text-content-soft">
+            {tx('Source: FairTSA · excerpt checked ','المصدر: FairTSA · تاريخ الاطلاع ')}
+            {data.excerptCheckedOn}
+            {tx(' · not a complete world inventory',' · ليست قاعدة بيانات عالمية شاملة')}
+          </p>
+        </div>
+        <a href={data.sourceUrl} target="_blank" rel="noopener noreferrer"
+          className="inline-flex items-center gap-1 text-[11px] font-medium text-sage-700 hover:underline">
+          {tx('View original directory','عرض الدليل الأصلي')}
+          <ExternalLink className="h-3.5 w-3.5"/>
+        </a>
+      </div>
+
+      {data.results.length>0?(
+        <div className="grid gap-3 xl:grid-cols-2">
+          {data.results.map(record=>{
+            const chosen=shortlist.some(x=>x.recordId===record.recordId&&
+              x.organizationName===record.organizationName)
+            return <article key={record.organizationName+record.recordId}
+              className="rounded-lg border border-line bg-background p-4">
+              <p className="text-[10px] font-semibold uppercase tracking-[.08em] text-sage-700">
+                {tx('PRODUCT REPORTED IN REGISTRY','منتج مدرج في السجل')}
+              </p>
+              <h3 className="mt-1 text-[15px] font-medium text-content">
+                {record.organizationName}
+              </h3>
+              <div className="mt-3 grid grid-cols-2 gap-x-3 gap-y-3 text-[12px]">
+                {[
+                  [tx('Product listed','المنتج المدرج'),record.matchedProduct],
+                  [tx('Country','الدولة'),record.countryName],
+                  [tx('Certifying body listed','جهة التصديق المدرجة'),record.certifier],
+                  [tx('Directory ID','معرف الدليل'),record.recordId],
+                ].map(([label,value])=>(
+                  <div key={label} className="min-w-0">
+                    <p className="text-[10px] text-content-soft">{label}</p>
+                    <p className="mt-1 break-words font-medium text-content">{value}</p>
+                  </div>
+                ))}
+              </div>
+              <div className="mt-3 rounded-lg border border-warning-line bg-warning-soft p-2.5 text-[11px] text-content">
+                {tx('Grower role: NOT independently confirmed · Active certificate: NOT rechecked · Export/stock: UNKNOWN',
+                  'صفة المزارع: غير مثبتة · سريان الشهادة: غير مفحوص · التصدير والمخزون: غير معروف')}
+              </div>
+              <div className="mt-3 flex flex-wrap items-center gap-2">
+                <a href={record.sourceUrl} target="_blank" rel="noopener noreferrer"
+                  className="inline-flex items-center gap-1 text-[11px] font-medium text-sage-700 hover:underline">
+                  <FileCheck2 className="h-3.5 w-3.5"/>
+                  {tx('Open evidence','فتح المصدر')}
+                  <ArrowUpRight className="h-3 w-3"/>
+                </a>
+                <button type="button"
+                  onClick={()=>toggle(record)}
+                  className="ms-auto inline-flex min-h-9 items-center gap-1.5 rounded-full border border-line-accent bg-card px-3 py-1.5 text-[11px] text-sage-700">
+                  <ClipboardCheck className="h-3.5 w-3.5"/>
+                  {chosen?tx('Remove from research list','إزالة من قائمة البحث'):
+                    tx('Add to research list','إضافة إلى قائمة البحث')}
+                </button>
+              </div>
+            </article>
+          })}
+        </div>
+      ):(
+        <div className="rounded-lg border border-line bg-background p-4">
+          <p className="text-[13px] font-medium text-content">
+            {tx('No documented match in this limited excerpt','لا توجد مطابقة في هذا المقتطف المحدود')}
+          </p>
+          <p className="mt-1 text-[12px] text-content-soft">
+            {tx('This does NOT mean that producers for this crop do not exist. Consult the wider official directories below. NFII will not invent company names to fill the gap.',
+              'هذا لا يعني عدم وجود منتجين للمحصول. راجع الأدلة الرسمية الأوسع أدناه. لن يُنشئ النظام أسماء شركات وهمية لسد النقص.')}
+          </p>
+        </div>
+      )}
+    </div>}
+
+    {shortlist.length>0&&<div className="rounded-xl border border-line-accent bg-cream-100/30 p-4">
+      <div className="flex flex-wrap items-center justify-between gap-2">
+        <p className="text-[12px] font-medium text-content">
+          {tx('Research shortlist','قائمة البحث')} ({shortlist.length})
+        </p>
+        <div className="flex gap-2">
+          <button type="button" onClick={()=>void copy()}
+            className="rounded-full border border-line-accent px-3 py-1.5 text-[11px] text-sage-700">
+            {tx('Copy with evidence','نسخ مع الأدلة')}
+          </button>
+          <button type="button" onClick={()=>{setShortlist([]);setCopyStatus('')}}
+            className="inline-flex items-center gap-1 rounded-full border border-line px-3 py-1.5 text-[11px] text-content">
+            <Trash2 className="h-3.5 w-3.5"/>{tx('Clear','مسح')}
+          </button>
+        </div>
+      </div>
+      {copyStatus&&<p role="status" className="mt-2 text-[11px] text-sage-700">{copyStatus}</p>}
+      <p className="mt-2 text-[11px] text-content-soft">
+        {tx('Candidates are kept only in this browser until you copy them. Nothing is added to the approved supplier registry or Supabase.',
+          'تُحفظ الأسماء في المتصفح فقط حتى تنسخها. لا تُضاف إلى سجل الموردين أو Supabase.')}
+      </p>
+    </div>}
+
+    <div className="rounded-lg border border-line bg-muted/20 p-4">
+      <h3 className="text-[13px] font-medium text-content">
+        {tx('Broader official certification searches','البحث الأوسع في سجلات الاعتماد الرسمية')}
+      </h3>
+      <p className="mt-1 text-[11px] leading-relaxed text-content-soft">
+        {tx('The bundled excerpt has limited coverage. These two registries provide broader product-level evidence, but their crop filters and full datasets are not yet connected through an NFII API.',
+          'تغطية هذا المقتطف محدودة. تقدم السجلات التالية بيانات أوسع عن المنتجات، لكن البحث الكامل فيها لم يُدمج عبر API في NFII بعد.')}
+      </p>
+      <div className="mt-3 grid gap-2 md:grid-cols-2">
+        {[
+          {url:USDA_ORGANIC_REGISTRY_URL,name:'USDA Organic INTEGRITY',
+            en:'Search certified crops/products; worldwide USDA-organic scope only.',
+            ar:'ابحث حسب المحاصيل والمنتجات ضمن نطاق اعتماد USDA العضوي.'},
+          {url:GLOBALGAP_REGISTRY_URL,name:'GLOBALG.A.P. IT platform',
+            en:'Check crop-specific producer certificates and product lists; API requires access.',
+            ar:'تحقق من شهادات المنتجين وقوائم المحاصيل؛ يتطلب الربط البرمجي صلاحية وصول.'},
+        ].map(item=>(
+          <a key={item.name} href={item.url} target="_blank" rel="noopener noreferrer"
+            className="rounded-lg border border-line bg-card p-3 hover:border-line-accent">
+            <div className="flex items-center justify-between gap-2">
+              <strong className="text-[12px] text-content">{item.name}</strong>
+              <ExternalLink className="h-3.5 w-3.5 text-sage-700"/>
+            </div>
+            <p className="mt-1 text-[11px] leading-relaxed text-content-soft">
+              {tx(item.en,item.ar)}
+            </p>
+          </a>
+        ))}
+      </div>
+      <p className="mt-3 text-[10px] text-content-soft">
+        {tx('FairTSA excerpt verification date: ','تاريخ التحقق من مقتطف FairTSA: ')}
+        {FAIRTSA_EXCERPT_CHECKED}
+        {' · '}
+        <a href={FAIRTSA_REGISTRY_URL} target="_blank" rel="noopener noreferrer"
+          className="text-sage-700 underline">
+          {tx('original list','القائمة الأصلية')}
+        </a>
+      </p>
+    </div>
+  </section>
+}
