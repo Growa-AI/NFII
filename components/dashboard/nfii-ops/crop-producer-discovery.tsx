@@ -1,13 +1,13 @@
 'use client'
 
-import {useRef,useState,type FormEvent} from 'react'
+import {useCallback,useRef,useState,type FormEvent} from 'react'
 import {
   ArrowUpRight,ClipboardCheck,ExternalLink,FileCheck2,
   Leaf,Loader2,Search,ShieldAlert,Trash2,
 } from 'lucide-react'
 import {useI18n} from '@/lib/i18n'
 import {COMMODITY_CATALOG} from '@/lib/platform/commodity-catalog'
-import {WORLD_COUNTRIES} from '@/lib/nfii/world-countries'
+import {OriginPriceIntelligence,type FeasibleCropCountry} from './origin-price-intelligence'
 import {
   FAIRTSA_REGISTRY_URL,FAIRTSA_EXCERPT_CHECKED,
   GLOBALGAP_REGISTRY_URL,USDA_ORGANIC_REGISTRY_URL,
@@ -42,6 +42,7 @@ export function CropProducerDiscovery({organizationId}:{organizationId:string|nu
   const tx=(en:string,arabic:string)=>ar?arabic:en
   const [crop,setCrop]=useState('rice')
   const [country,setCountry]=useState('')
+  const [feasibleCountries,setFeasibleCountries]=useState<FeasibleCropCountry[]>([])
   const [research,setResearch]=useState<'curated'|'mapped'|'places'>('mapped')
   const [data,setData]=useState<CropResult|null>(null)
   const [queryLoading,setQueryLoading]=useState(false)
@@ -51,6 +52,9 @@ export function CropProducerDiscovery({organizationId}:{organizationId:string|nu
   const [visibleCount,setVisibleCount]=useState(20)
   const [roleFilter,setRoleFilter]=useState('all')
   const controller=useRef<AbortController|null>(null)
+  const onCountriesLoaded=useCallback((countries:FeasibleCropCountry[])=>{
+    setFeasibleCountries(countries)
+  },[])
 
   const invalidate=()=>{
     controller.current?.abort()
@@ -151,25 +155,31 @@ export function CropProducerDiscovery({organizationId}:{organizationId:string|nu
       </span>
     </div>
 
+    <OriginPriceIntelligence commodity={crop} organizationId={organizationId}
+      onCountriesLoaded={onCountriesLoaded}
+      onSelectCountry={next=>{invalidate();setCountry(next)}}/>
+
     <form onSubmit={event=>void search(event)}
       className="grid gap-3 rounded-xl border border-line bg-background p-4 md:grid-cols-[minmax(0,1.4fr)_minmax(0,.9fr)_auto] md:items-end">
       <label className="space-y-1.5">
         <span className="nfii-label">{tx('1. Select crop / food product','١. اختر المحصول / المنتج')}</span>
         <select className="nfii-input min-h-11" value={crop}
-          onChange={event=>{invalidate();setCrop(event.target.value)}}>
+          onChange={event=>{invalidate();setCountry('');setFeasibleCountries([]);setCrop(event.target.value)}}>
           {COMMODITY_CATALOG.map(item=><option key={item.id} value={item.id}>
             {ar?item.nameAr:item.name}
           </option>)}
         </select>
       </label>
       <label className="space-y-1.5">
-        <span className="nfii-label">{tx('2. Country (optional)','٢. الدولة (اختياري)')}</span>
+        <span className="nfii-label">{tx('2. Feasible sourcing origin','٢. منشأ توريد مدعوم')}</span>
         <select className="nfii-input min-h-11" value={country}
           onChange={event=>{invalidate();setCountry(event.target.value)}}>
-          <option value="">{tx('All countries (published directory only)','جميع الدول (الدليل المنشور فقط)')}</option>
-          {WORLD_COUNTRIES.map(item=><option key={item.code} value={item.code}>
-            {item.name}
+          <option value="">{tx('All documented countries','جميع الدول الموثقة')}</option>
+          {feasibleCountries.map(item=><option key={item.countryCode} value={item.countryCode}>
+            {item.countryName}{item.observedQatarImports&&item.historicalUnitValueQarKg!==null?
+              ' · '+item.historicalUnitValueQarKg.toFixed(2)+' QAR/kg':' · unpriced'}
           </option>)}
+          <option value="QA">{tx('Qatar · local sourcing (unpriced)','قطر · توريد محلي (بدون سعر)')}</option>
         </select>
       </label>
       <button type="submit" disabled={queryLoading||(research==='places'&&(!country||!organizationId))}
