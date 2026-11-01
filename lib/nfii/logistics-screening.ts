@@ -30,8 +30,6 @@ export const QATAR_GATEWAYS={
   sea:QATAR_PORT,air:QATAR_AIR,road:QATAR_ROAD,
 }
 const km=(a:GeoPoint,b:GeoPoint)=>haversineKm(a,b)
-const near=(a:GeoPoint,b:GeoPoint,c:GeoPoint)=>
-  km(a,b)+km(b,c)
 const MAX=100000
 /** Forward-looking feasibility cannot be asserted when departure is not scheduled. */
 export function buildScreenedRoutes(inputs:RouteInputs):ScreenedRoute[]{
@@ -43,7 +41,6 @@ export function buildScreenedRoutes(inputs:RouteInputs):ScreenedRoute[]{
   const make=(route:{
     id:string;mode:Mode;via:string|null;from:string;to:string;
     originCode:string;destinationCode:string;geometry:GeoPoint[];
-    milesFactor?:number;
   }):ScreenedRoute=>{
     const observed=inputs.seaDistances?.[route.id]
     const routeKm=observed?.km
