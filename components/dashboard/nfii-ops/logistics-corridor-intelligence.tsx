@@ -27,6 +27,8 @@ type ModelResponse={
   sourceStatus:{searoutes:string;worldBank:string;marineWeather:string;googleRoad:string}
   sources:{searoutes:string|null;worldBank:string|null;marineWeather:string|null;googleRoad:string|null}
   dataWarnings:string[]
+  riskContext:{originLpi:number|null;lpiYear:number|null;
+    waveHeightMaxMeters:number|null;worldBankStatus:string;weatherStatus:string}
   regionalHazards:{state:'available'|'unavailable';alerts:Array<{id:string;label:string;severity:string;near:string;distanceKm:number;sourceUrl:string}>;observedAt:string;sourceUrl:string}
   freightBenchmark:{status:string;message:string;quoteStatus:string;
     estimate:{amountMinQar:number;amountMaxQar:number;
@@ -308,6 +310,54 @@ export function LogisticsCorridorIntelligence({
               onSelect={id=>data?setSelected(id):setPreviewSelected(id)} locale={ar?'ar':'en'}/>
           </div>
     {data&&<div className="space-y-4">
+      {data.mapRoutes.every(route=>route.paths.length===0)&&
+        <p role="status" className="rounded-lg border border-warning-line bg-warning-soft p-3 text-[12px] text-content">
+          {tx('No maritime geometry was calculated for this port pair. This is a routing-data limitation, not proof that sea transport is impossible.',
+            'لم يتم حساب مسار بحري لهذه الموانئ؛ هذا لا يعني أن الشحن غير ممكن.')}
+          {data.dataWarnings.filter(v=>/ocean|SeaRoutes/i.test(v)).length>0&&
+            <span className="mt-1 block text-[11px] text-content-soft">
+              {data.dataWarnings.filter(v=>/ocean|SeaRoutes/i.test(v)).join(' · ')}
+            </span>}
+        </p>}
+      <div className="grid gap-3 sm:grid-cols-3">
+        <div className="rounded-md border border-line p-3">
+          <p className="text-[10px] text-content-soft">World Bank Logistics Performance Index</p>
+          <strong className="text-[16px] text-content">
+            {data.riskContext.originLpi===null?'N/A':
+              format(data.riskContext.originLpi,2)+' / 5'}
+          </strong>
+          <p className="text-[10px] text-content-soft">
+            {data.riskContext.lpiYear??
+              tx('No country benchmark','لا يوجد مؤشر وطني')}
+            {' · '}{tx('National, historical; not route-specific','وطني وتاريخي')}
+          </p>
+        </div>
+        <div className="rounded-md border border-line p-3">
+          <p className="text-[10px] text-content-soft">
+            {tx('Origin-port maximum forecast wave','أعلى موج متوقع في ميناء المصدر')}
+          </p>
+          <strong className="text-[16px] text-content">
+            {data.riskContext.waveHeightMaxMeters===null?'N/A':
+              format(data.riskContext.waveHeightMaxMeters,1)+' m'}
+          </strong>
+          <p className="text-[10px] text-content-soft">
+            {tx('Port grid only, not the full voyage','في نقطة الميناء فقط')}
+          </p>
+        </div>
+        <div className="rounded-md border border-line p-3">
+          <p className="text-[10px] text-content-soft">
+            {tx('Requested delivery window','المدة المستهدفة')}
+          </p>
+          <strong className="text-[16px] text-content">
+            {data.context.deliveryDeadlineDays} {tx('days','أيام')}
+          </strong>
+          <p className="text-[10px] text-content-soft">
+            {data.routes.find(r=>r.mode==='sea')?.estimatedDays===null?
+              tx('Sailing feasibility unknown','المدة البحرية غير معروفة'):
+              tx('Compare sailing estimate with port and customs delays','أضف وقت الميناء والجمارك')}
+          </p>
+        </div>
+      </div>
       {data.freightBenchmark.estimate&&<div className="rounded-lg border border-line-accent bg-cream-100/20 p-3">
         <div className="flex flex-wrap items-center justify-between gap-2">
           <h3 className="text-[13px] font-semibold text-content">
