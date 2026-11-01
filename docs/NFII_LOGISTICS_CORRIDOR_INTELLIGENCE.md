@@ -90,3 +90,52 @@ No Supabase migrations or new database permissions were added.
 Configured providers must be used under their commercial licence and rate
 limits. A missing rate or sea routing service is never silently replaced
 with a made-up number, and each corridor includes its evidence level.
+
+## Improved API evidence and pricing (2026-11-01)
+
+NFII now supports **four external data feeds**, and never invents a carrier offer:
+
+- **Freightos Shipping Estimates**: publicly accessible, non-binding marketplace
+  range, for compatible dry standard 40-foot FCL loads (1–22 tonnes).
+  Endpoint: `https://ship.freightos.com/api/shippingCalculator`. An explicit
+  Freightos credit and source link is displayed in the UI, as required by
+  their API terms. USD ranges are converted to **QAR per kg** and total QAR
+  at the Qatar USD peg of 3.64. The service may return no coverage or a
+  temporarily unavailable response; in that case **N/A** is shown.
+  It does not price reefer containers, or fresh refrigerated food,
+  nor does it confirm insurance, drayage, customs or carrier capacity.
+  API docs: https://ship.freightos.com/api/shippingCalculator
+- **Google Routes API**: if `GOOGLE_ROUTES_API_KEY` is configured,
+  supplies actual road-network distance and basic driving duration for
+  eligible regional road scenarios. The duration is a **passenger-car**
+  observation, not a trucking or cross-border clearance guarantee.
+  NFII keeps a separate commercial-road transit planning allowance.
+  Source: https://developers.google.com/maps/documentation/routes/compute_route_directions
+- **SeaRoutes API**: optional `SEAROUTES_API_KEY`, used for navigable
+  geometry and theoretical duration where the commercial API responds.
+  This is not a sailing schedule or carrier delivery ETA.
+- **World Bank LPI**, openly accessible and historical, plus optional
+  **Open-Meteo Marine** commercial `OPEN_METEO_COMMERCIAL_API_KEY`,
+  for risk context at the departure port. Commercial marine hostname
+  is `customer-marine-api.open-meteo.com` (not the general weather
+  customer host). This is not a forecast along the complete voyage.
+
+Provider calls are bounded by timeouts and API responses are validated.
+No provider secret is shipped to the browser.
+
+**Comparative charts**: the risk chart is a **heuristic screening index**;
+the transport-day chart distinguishes routing evidence from assumed transit
+time; the quote chart uses **entered freight rates**, while an independent
+Freightos cost-range visualization shows market benchmark limits when
+available. Provider availability and source links are visible.
+
+**Scope**: only origins with crop-matched suppliers from Procurement may
+be selected. Published company candidates and tenant-approved suppliers
+(with current approved commodity contracts) remain separate categories.
+A published candidate is not automatically an approved supplier.
+
+**Not yet integrated**: commercial booking or carrier-provided ETAs,
+refrigerated freight RFQs, live vessel positions, customs rates, actual
+shipment tracking, and global insurance quotes. These require licensed
+providers and explicit account configuration; no surrogate data is shown
+as a real quote.
