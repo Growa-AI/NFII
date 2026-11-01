@@ -63,6 +63,25 @@ describe('First-party crop product evidence from FairTSA public directory',()=>{
     expect(findDocumentedCropOrganizations('date','SA').length).toBeGreaterThanOrEqual(12)
     expect(findDocumentedCropOrganizations('rice','AU')).toEqual([])
   })
+  it('finds Qatar businesses across farm, manufacturer and trader roles without inventing local grains',()=>{
+    const expected:{[crop:string]:number}={
+      tomato:10,cucumber:9,pepper:9,lettuce:8,date:5,milk:5,rice:8,wheat:2,barley:2,
+    }
+    for(const [crop,min] of Object.entries(expected)){
+      const rows=findDocumentedCropOrganizations(crop,'QA')
+      expect(rows.length).toBeGreaterThanOrEqual(min)
+      expect(rows.every(r=>r.countryCode==='QA')).toBe(true)
+      expect(rows.every(r=>r.supplierApproved===false && r.cropGrowerConfirmed===false)).toBe(true)
+      expect(rows.every(r=>r.sourceUrl.startsWith('https://'))).toBe(true)
+    }
+    expect(findDocumentedCropOrganizations('tomato','QA').some(r=>
+      r.organizationName.includes('Agrico')&&r.supplierRole==='farm_claim')).toBe(true)
+    expect(findDocumentedCropOrganizations('milk','QA').some(r=>
+      r.organizationName.includes('Baladna')&&r.supplierRole==='manufacturer')).toBe(true)
+    expect(findDocumentedCropOrganizations('rice','QA').every(r=>r.supplierRole==='trader')).toBe(true)
+    expect(findDocumentedCropOrganizations('barley','QA').every(r=>
+      r.matchedProduct.toLowerCase().includes('feed'))).toBe(true)
+  })
   it('accepts only known commodity IDs and ISO two-letter country codes',()=>{
     const ok=validateCropProducerSearch(new URLSearchParams('commodity=tomato&country=tr'))
     expect(ok).toEqual({ok:true,commodity:'tomato',country:'TR'})
