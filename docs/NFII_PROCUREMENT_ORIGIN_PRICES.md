@@ -27,7 +27,7 @@ The endpoint:
 4. Uses the latest year with any meaningful observed trade and screens
    country-level lanes by a minimum of **US$10,000** and minimum annual tonnes:
    **10t** for greenhouse/fresh vegetable groups, **20t** for dates/milk,
-   **100t** for barley/rice/wheat. These thresholds are product-neutral
+   **1,000t** for barley/rice/wheat. These thresholds are product-neutral
    operational heuristics, not proof that a country can fill any specific RFQ.
 5. Examines the 12 largest eligible import-volume lanes and sorts them by
    observed unit value. **All** eligible country lanes contribute to the
