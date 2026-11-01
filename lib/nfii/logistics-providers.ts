@@ -2,12 +2,13 @@ import {getExportHub,QATAR_PORT,type GeoPoint} from './logistics-lanes'
 import type {RouteInputs} from './logistics-screening'
 import {readSeaRouteGeometry,matchesRequestedSeaPorts,type GeoLine,type GeoPointTuple} from './logistics-route-geometry'
 import {fetchRoadEvidence,type RoadEvidence} from './logistics-road-api'
+import {fetchOpenOceanFallback} from './logistics-open-ocean'
 
 type Obj=Record<string,unknown>
 const obj=(v:unknown):Obj=>typeof v==='object'&&v!==null&&!Array.isArray(v)?v as Obj:{}
 const num=(v:unknown):number|null=>typeof v==='number'&&Number.isFinite(v)&&v>=0?v:null
 const marineApi='https://api.searoutes.com'
-export type ProviderState='available'|'unconfigured'|'unavailable'|'missing'
+export type ProviderState='available'|'unconfigured'|'unavailable'|'missing'|'estimated'
 export type ExternalLogistics={
  seaRoutes:RouteInputs['seaDistances']
  roadRoute:RoadEvidence|null
@@ -132,14 +133,25 @@ export async function collectLogisticsEvidence(country:string):Promise<ExternalL
     fetchSeaRoutes(country),fetchWorldBankLpi(country),
     fetchMarineWave(hub.sea),fetchRoadEvidence(country),
   ])
+  let seaDistances=sea.seaRoutes
+  const sourceStates={...{searoutes:sea.state,worldBank:lpi.state,marineWeather:marine.state,
+    googleRoad:road.status==='not_applicable'?'missing' as const:road.status}}
+  const messages=[...sea.messages]
+  if(!seaDistances?.sea_direct?.geometry?.length){
+    const local=await fetchOpenOceanFallback(country)
+    if(local.route){
+      seaDistances={...(seaDistances??{}),sea_direct:local.route}
+      sourceStates.searoutes='estimated'
+    }
+    messages.push(local.message)
+  }
   return {
-    seaRoutes:sea.seaRoutes,roadRoute:road.data,lpi:lpi.value,lpiYear:lpi.year,
+    seaRoutes:seaDistances,roadRoute:road.data,lpi:lpi.value,lpiYear:lpi.year,
     waves:marine.value,weatherAgeHours:null,
-    states:{searoutes:sea.state,worldBank:lpi.state,marineWeather:marine.state,
-      googleRoad:road.status==='not_applicable'?'missing':road.status},
+    states:sourceStates,
     refs:{searoutes:sea.source,
       worldBank:lpi.state==='available'?lpi.url:null,
       marineWeather:marine.url,googleRoad:road.data?.sourceUrl??null},
-    messages:sea.messages,
+    messages,
   }
 }
