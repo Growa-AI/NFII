@@ -43,15 +43,11 @@ describe('Guided procurement experience',()=>{
     expect(workspace).toContain("method:'POST'")
     expect(workspace).toContain("user?.id!==row.submitted_by")
   })
-  it('lets an authorized organization enter Live mode even when its ledger is empty',()=>{
-    expect(workspace).toContain('const [preferLive,setPreferLive]=useState(false)')
+  it('keeps an empty authorized ledger in live mode without synthetic records',()=>{
     expect(workspace).toContain('const isPreview=!orgId||snapshot===null')
     expect(workspace).not.toContain('previewOperationsSnapshot(today)')
     expect(workspace).not.toContain('setForcePreview(true)')
-    expect(workspace).toContain('disabled={!orgId || snapshot===null}')
-    expect(workspace).not.toContain('disabled={!orgId || !liveHasRecords}')
-    expect(workspace).toContain('setPreferLive(true)')
-    expect(workspace).toContain('Live register is empty. Start by registering your first supplier.')
+    expect(workspace).toContain('Organization register is empty. Add an actual supplier to begin.')
     expect(workspace).toContain("canEdit=!isPreview")
   })
   it('keeps Logistics and Reserves registers and audit facilities unchanged',()=>{

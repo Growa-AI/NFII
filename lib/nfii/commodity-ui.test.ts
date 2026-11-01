@@ -16,9 +16,10 @@ describe('Commodity Intelligence information architecture',()=>{
     expect(ui).toContain("value:total?.projectedClosingStockTonnes")
     expect(ui).toContain('Food balance explained')
   })
-  it('distinguishes illustrative data from reviewed live data',()=>{
-    expect(ui).toContain('ILLUSTRATIVE QATAR EXAMPLE')
-    expect(ui).toContain('VERIFIED ORGANIZATION SOURCES')
+  it('does not display synthetic example commodity data as live',()=>{
+    expect(ui).not.toContain('ILLUSTRATIVE QATAR EXAMPLE')
+    expect(ui).toContain('REVIEWED ORGANIZATION SOURCES')
+    expect(ui).toContain('VERIFIED DATA INCOMPLETE')
     expect(agent).toContain('SIMULATION · READ ONLY')
     expect(agent).toContain('No automatic execution')
   })
