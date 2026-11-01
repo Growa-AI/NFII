@@ -7,6 +7,7 @@ import {findDocumentedCropOrganizations} from '@/lib/nfii/crop-producer-director
 import {comtradeOriginUrl,parseImportOriginYear,
   rankQatarImportOrigins} from '@/lib/nfii/origin-price-model'
 import {countryName} from '@/lib/nfii/world-countries'
+import {getWits2024Snapshot} from '@/lib/nfii/wits-2024-prices'
 import {resolveCommodity} from '@/lib/platform/commodity-catalog'
 
 export const dynamic='force-dynamic'
@@ -64,7 +65,29 @@ export async function GET(request:Request){
     }
   }))
   const years=annual.flatMap(item=>item.data?[item.data]:[])
-  const report=rankQatarImportOrigins(selected,years)
+  let report=rankQatarImportOrigins(selected,years)
+  let publishedFallback:ReturnType<typeof getWits2024Snapshot>=null
+  // HTTP 200 with no matching trade partners is not proof of zero imports.
+  // WITS independently publishes a 2024 annual Qatar partner breakdown.
+  if(report.origins.length===0){
+    publishedFallback=getWits2024Snapshot(selected)
+    if(publishedFallback){
+      report=rankQatarImportOrigins(selected,[publishedFallback.observation])
+      if(report.origins.length){
+        report={
+          ...report,
+          sourceName:'World Bank WITS / UN Comtrade published 2024',
+          sourceDataStatus:'published_wits_2024',
+          hsCode:publishedFallback.hsCode,
+          hsLabel:publishedFallback.productScope,
+          productScope:publishedFallback.productScope,
+          note:'Historical World Bank WITS 2024 Qatar import partner observations. '+
+            'The published World-row value and weight determine the nationwide '+
+            'weighted mean. These are not current prices or supplier quotations.',
+        }
+      }
+    }
+  }
 
   const documented=findDocumentedCropOrganizations(selected)
   const sources=new Map<string,{countryCode:string;name:string;documentedLeads:number}>()
@@ -100,6 +123,12 @@ export async function GET(request:Request){
 
   return reply({
     commodity:selected,requestedYear:year,yearsWithRecords:years.map(x=>x.year),
+    historicalFallbackUsed:report.sourceDataStatus==='published_wits_2024',
+    provenance:publishedFallback?{
+      publisher:publishedFallback.sourceName,hsCode:publishedFallback.hsCode,
+      productScope:publishedFallback.productScope,
+      sourceUrls:publishedFallback.sourceUrls,
+    }:null,
     provider:'un-comtrade-public-preview',
     report,
     shortlist,
@@ -112,6 +141,8 @@ export async function GET(request:Request){
     },
     dataStatus:years.length?'available':'unavailable',
     providerWarnings:annual.filter(row=>row.error).length,
+    priceUnavailabilityReason:report.origins.length?null:
+      'No usable prices from live Comtrade or attributable historical sources.',
     note:'Only countries with a documented supplier lead or measurable historic Qatar '+
       'imports above a minimum trade threshold are displayed. Countries without '+
       'a Comtrade import history remain unpriced, not necessarily infeasible. '+
