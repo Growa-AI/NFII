@@ -172,3 +172,26 @@ separately attributed context, not numerical penalty points.
 SeaRoutes routing durations remain theoretical vessel voyage times.
 No actual carrier schedules, ocean freight booking, or heavy-truck ETA
 have been obtained unless a future licensed source explicitly supplies them.
+
+## Offline maritime route fallback and restored calculations (2026-11-01)
+
+When the optional commercial SeaRoutes API is missing/unavailable,
+NFII computes the primary origin-to-Qatar route on an **ocean-grid network**
+using the MIT-licensed `@arcnautical/maritime-routing` local engine.
+It is neither a direct overland line nor a commercial carrier's service
+or schedule. Geometry comes from an open-source OSM-derived sea mask;
+estimated sailing days assume **14 knots**, excluding port dwell, export
+handling, customs, transshipment and disruptions. The estimate and
+route source are explicitly labeled as **Ocean network · estimate**.
+SeaRoutes' published geometry and theoretical time take priority when
+available.
+
+Extra via-Jebel Ali or via-Salalah routes are only compared when backed
+by provider geometry; airline transfers are not inferred automatically.
+Airline and trucking door-to-door ETA remain unknown without schedule/
+cross-border service evidence. These limitations do not block the offline
+maritime geographic scenario or its estimated sailing-time chart.
+
+The package reads its binary ocean-grid asset at runtime; Next.js
+`serverExternalPackages` preserves that asset. Unit tests exercise
+a real India → Qatar ocean path, not just fabricated example coordinates.
