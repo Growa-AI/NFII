@@ -127,8 +127,8 @@ export function findDocumentedCropOrganizations(
     .map(row=>({
       ...row,certifier:'Not established by source',listedProducts:[row.matchedProduct],
       registryCheckedOn:FAIRTSA_EXCERPT_CHECKED,
-      cropGrowerConfirmed:false,currentCertificateConfirmed:false,
-      exportCapabilityConfirmed:false,capacityTonnes:null,supplierApproved:false,
+      cropGrowerConfirmed:false as const,currentCertificateConfirmed:false as const,
+      exportCapabilityConfirmed:false as const,capacityTonnes:null,supplierApproved:false as const,
     }))
   // Deduplicate across registries, retaining the source with the strongest
   // explicit product evidence. Country is part of the identity key.
