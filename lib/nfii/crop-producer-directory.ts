@@ -16,6 +16,7 @@
 import {resolveCommodity} from '@/lib/platform/commodity-catalog'
 import {ADDITIONAL_CROP_LISTINGS, type CropSourceEvidenceType} from './crop-producer-associations'
 import {QATAR_NAMED_PROSPECTS} from './qatar-crop-suppliers'
+import {WORLD_DOCUMENTED_OPERATORS} from './world-documented-operators'
 
 export const FAIRTSA_REGISTRY_URL='https://www.fairtsa.org/products'
 export const USDA_ORGANIC_REGISTRY_URL='https://organic.ams.usda.gov/integrity/'
@@ -124,7 +125,7 @@ export function findDocumentedCropOrganizations(
       exportCapabilityConfirmed:false as const,capacityTonnes:null,supplierApproved:false as const,
     }]
   })
-  const additional:CropProducerEvidence[]=[...ADDITIONAL_CROP_LISTINGS,...QATAR_NAMED_PROSPECTS]
+  const additional:CropProducerEvidence[]=[...ADDITIONAL_CROP_LISTINGS,...QATAR_NAMED_PROSPECTS,...WORLD_DOCUMENTED_OPERATORS]
     .filter(row=>row.commodityId===crop.id&&
       (!allowedCountry||row.countryCode===allowedCountry))
     .map(row=>({
