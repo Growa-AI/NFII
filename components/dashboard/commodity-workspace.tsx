@@ -45,7 +45,7 @@ export function CommodityWorkspace(){
   const [days,setDays]=useState<7|30|90|180>(30)
   const [view,setView]=useState<View>(query.get('view')==='agents'?'agents':'overview')
   const {
-    balance,operations,mode,selection,setSelection,
+    balance,operations,
     organization,organizationId,organizationLoading,loading,foodError,operationsError,
     hasVerifiedBalance,hasLiveOperations,refresh,today,
   }=useCommodityCase(commodity.id,days)
@@ -57,7 +57,6 @@ export function CommodityWorkspace(){
   const links=useMemo(()=>linkCommodityOperations(commodity.id,operations,today),
     [commodity.id,operations,today])
   const risk=riskFor(balance)
-  const isExample=mode==='example'
   const riskLabels={
     critical:[tx('Critical screening','مؤشر حرج'),'text-critical bg-warning-soft border-warning-line'],
     high:[tx('High exposure','مخاطر مرتفعة'),'text-warning-strong bg-warning-soft border-warning-line'],
@@ -160,45 +159,17 @@ export function CommodityWorkspace(){
             </button>
           ))}
         </div>
-        <div className="mt-4 flex flex-wrap items-center justify-between gap-2 border-t border-line pt-3">
-          <div className="flex flex-wrap items-center gap-2 text-[11px] text-content-soft">
-            <span className={'inline-flex rounded-full border px-2.5 py-1 font-medium '+
-              (isExample?'border-warning-line bg-warning-soft text-warning-strong':
-                'border-line-accent bg-cream-100 text-sage-700')}>
-              {isExample?tx('ILLUSTRATIVE QATAR EXAMPLE','مثال توضيحي لقطر'):
-                tx('VERIFIED ORGANIZATION SOURCES','مصادر المؤسسة الموثقة')}
-            </span>
-            <span>{balance?.fromDate} → {balance?.toDate}</span>
-            {organization?.name&&<span>· {organization.name}</span>}
-          </div>
-          <div className="flex flex-wrap gap-1">
-            {[
-              {key:'auto' as const,en:'Auto',ar:'تلقائي'},
-              {key:'live' as const,en:'Live data',ar:'بيانات فعلية'},
-              {key:'example' as const,en:'Example data',ar:'بيانات توضيحية'},
-            ].map(item=>(
-              <button key={item.key} type="button" aria-pressed={selection===item.key}
-                disabled={item.key==='live'&&!organizationId}
-                onClick={()=>setSelection(item.key)}
-                className={'rounded-full border px-3 py-1.5 text-[11px] '+
-                  (selection===item.key?'border-ink bg-ink text-white':
-                    'border-line bg-card text-content-soft hover:border-line-strong disabled:opacity-40')}>
-                {tx(item.en,item.ar)}
-              </button>
-            ))}
-          </div>
+        <div className="mt-4 flex flex-wrap items-center gap-2 border-t border-line pt-3 text-[11px] text-content-soft">
+          <span className={'inline-flex rounded-full border px-2.5 py-1 font-medium '+
+            (hasVerifiedBalance?'border-line-accent bg-cream-100 text-sage-700':
+              'border-warning-line bg-warning-soft text-warning-strong')}>
+            {hasVerifiedBalance?tx('REVIEWED ORGANIZATION SOURCES','مصادر المؤسسة المراجعة'):
+              tx('VERIFIED DATA INCOMPLETE','البيانات الموثقة غير مكتملة')}
+          </span>
+          <span>{balance?.fromDate??today} → {balance?.toDate??'—'}</span>
+          {organization?.name&&<span>· {organization.name}</span>}
         </div>
       </section>
-
-      {isExample&&<div role="status" className="rounded-lg border border-warning-line bg-warning-soft p-3 text-[12px] text-content">
-        <strong>{tx('Example scenario, not verified Qatar market data.','سيناريو توضيحي وليس بيانات سوق قطر الموثقة.')}</strong>
-        <p className="mt-1 text-[11px] text-content-soft">
-          {tx('Uses the Qatar seed already in NFII. Supplier contracts, shipments and reserve lots are illustrative and cannot authorize real purchases.',
-            'يستخدم بيانات قطر الموجودة في NFII. العقود والشحنات والدفعات توضيحية ولا تخول مشتريات فعلية.')}
-          {selection==='auto'&&!hasVerifiedBalance&&
-            tx(' Complete verified balance unavailable, so the example is displayed.',' لا يتوفر ميزان موثق مكتمل، لذا يظهر المثال.')}
-        </p>
-      </div>}
 
       {loading&&<p role="status" className="text-[12px] text-content-soft">
         {tx('Checking available organization sources…','جارٍ التحقق من مصادر المؤسسة…')}
@@ -287,7 +258,7 @@ export function CommodityWorkspace(){
                   {tx('Connected commodity supply chain','سلسلة الإمداد المرتبطة بالسلعة')}
                 </h3>
                 <span className="text-[11px] text-content-soft">
-                  {isExample?tx('Example records','سجلات توضيحية'):tx('Organization operations','عمليات المؤسسة')}
+                  {tx('Organization records','سجلات المؤسسة')}
                 </span>
               </div>
               <p className="mt-1 text-[11px] text-content-soft">
@@ -329,7 +300,7 @@ export function CommodityWorkspace(){
               </div>
 
               <h4 className="mt-5 text-[12px] font-medium text-content">
-                {tx('Representative linked records','سجلات مرتبطة نموذجية')}
+                {tx('Linked organization records','سجلات المؤسسة المرتبطة')}
               </h4>
               <div className="mt-2 overflow-x-auto">
                 <table className="w-full min-w-[540px] text-[12px]">
@@ -391,7 +362,7 @@ export function CommodityWorkspace(){
                     {links.pendingApprovals} {tx('related entries awaiting independent review.',
                       'سجلات مرتبطة تنتظر مراجعة مستقلة.')}
                   </p>}
-                  {operationsError&&!isExample&&<p className="text-warning-strong">
+                  {operationsError&&<p className="text-warning-strong">
                     {tx('Operational data unavailable: ','البيانات التشغيلية غير متاحة: ')}{operationsError}
                   </p>}
                 </div>
@@ -408,12 +379,10 @@ export function CommodityWorkspace(){
                   {tx('Data confidence','موثوقية البيانات')}
                 </h3>
                 <p className="mt-2 text-[12px] text-content-soft">
-                  {isExample?tx('Illustrative, not independently verified',
-                    'توضيحية وغير موثقة بشكل مستقل'):
-                    balance?.status==='complete'
-                      ?tx('Reviewed balance inputs, not national certification',
-                        'مدخلات ميزان مُراجعة وليست اعتماداً وطنياً')
-                      :tx('Incomplete verified evidence','أدلة موثقة غير مكتملة')}
+                  {balance?.status==='complete'
+                    ?tx('Reviewed balance inputs, not national certification',
+                      'مدخلات ميزان مُراجعة وليست اعتماداً وطنياً')
+                    :tx('Incomplete verified evidence','أدلة موثقة غير مكتملة')}
                 </p>
                 <p className="mt-2 text-[11px] text-content-soft">
                   {tx('Balance source references','مراجع مصادر الميزان')}: {balance?.evidence.sourceRefs.length??0}
@@ -441,24 +410,20 @@ export function CommodityWorkspace(){
               {tx('Source transparency','شفافية المصادر')}
             </h2>
             <p className="mt-2 text-[12px] text-content-soft">
-              {isExample
-                ?tx('These figures are generated from the existing NFII Qatar example file. They have no supplier signature, audited stock count or government certification.',
-                  'هذه القيم مشتقة من مثال NFII الخاص بقطر ولا تتضمن توقيع مورد أو جرداً مدققاً أو اعتماداً حكومياً.')
-                :tx('Only independently reviewed organization source records can appear in the verified food balance.',
-                  'لا تدخل في الميزان الغذائي الموثق إلا سجلات المؤسسة التي خضعت لمراجعة مستقلة.')}
+              {tx('Only reviewed organization records enter the food balance. Missing sources stay unavailable, never replaced with synthetic values.',
+                'تدخل سجلات المؤسسة المُراجعة فقط في الميزان الغذائي. لا تُستبدل البيانات المفقودة بأرقام مصطنعة.')}
             </p>
             <dl className="mt-3 grid gap-3 sm:grid-cols-2">
               <div className="rounded-lg border border-line p-3">
                 <dt className="text-[11px] text-content-soft">{tx('Food source mode','نوع مصدر الغذاء')}</dt>
                 <dd className="mt-1 text-[13px] font-medium text-content">
-                  {isExample?tx('Illustrative file','ملف توضيحي'):tx('Supabase, reviewed','Supabase، بيانات مراجعة')}
+                  {hasVerifiedBalance?tx('Supabase, reviewed','Supabase، بيانات مراجعة'):tx('Incomplete or unavailable','غير مكتمل أو غير متاح')}
                 </dd>
               </div>
               <div className="rounded-lg border border-line p-3">
                 <dt className="text-[11px] text-content-soft">{tx('Operational registry','السجل التشغيلي')}</dt>
                 <dd className="mt-1 text-[13px] font-medium text-content">
-                  {isExample?tx('Illustrative linked records','سجلات مترابطة توضيحية'):
-                    hasLiveOperations?tx('Supabase organization records','سجلات المؤسسة من Supabase'):
+                  {hasLiveOperations?tx('Supabase organization records','سجلات المؤسسة من Supabase'):
                       tx('Not connected','غير متصل')}
                 </dd>
               </div>
@@ -484,13 +449,13 @@ export function CommodityWorkspace(){
           </section>
           {organizationLoading||loading ? (
             <p className="text-[12px] text-content-soft">{tx('Loading organization source access…','جارٍ تحميل صلاحيات المصادر…')}</p>
-          ):mode==='live'&&organizationId?(
+          ):organizationId?(
             <FoodSourceIntake organizationId={organizationId} commodityId={commodity.id}
               onRecordsChanged={refresh}/>
           ):(
             <div className="rounded-xl border border-line bg-card p-4 text-[12px] text-content-soft">
-              {tx('Source intake and approval are available only in Live mode with an authorized organization. Example values cannot be verified by clicking a button.',
-                'يقتصر إدخال المصادر والموافقة عليها على البيانات الفعلية لمؤسسة مخولة؛ لا يمكن اعتماد القيم التوضيحية بضغطة زر.')}
+              {tx('Source intake and approval require an authorized organization. Source gaps must be resolved with verified records.',
+                'يلزم وجود مؤسسة مصرح لها وإدخال سجلات موثقة لاستكمال المصادر.')}
             </div>
           )}
         </div>
