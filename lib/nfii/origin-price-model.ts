@@ -54,6 +54,9 @@ export type OriginPriceReport={
   excludedInsufficientVolumeCount:number
   annualMinimumTonnes:number
   incompletePreview:boolean
+  nationalMeanFromWorldTotal:boolean
+  sourceDataStatus:'live_comtrade'|'published_wits_2024'|'no_usable_data'
+  productScope:string
   sourceUrl:string|null
   previousSourceUrl:string|null
   sourceName:typeof COMTRADE_SOURCE
@@ -74,6 +77,7 @@ export type YearObservation={
   partners:PartnerObservation[]
   incompletePreview:boolean
   sourceUrl:string
+  worldTotal?:PartnerObservation
 }
 
 const MIN_TONNES:Record<string,number>={
@@ -108,6 +112,7 @@ export function parseImportOriginYear(raw:unknown,commodity:string,year:number,
   if(!Array.isArray(rows))throw Error('UN Comtrade returned invalid trade rows')
   if(string(payload.error))throw Error('UN Comtrade reported a data error')
   const countries=new Map<string,PartnerObservation>()
+  let worldTotal:PartnerObservation|undefined
   for(const item of rows){
     const row=obj(item)
     if(Number(row.reporterCode)!==634||Number(row.refYear)!==year||
@@ -115,7 +120,13 @@ export function parseImportOriginYear(raw:unknown,commodity:string,year:number,
     if(row.partner2Code!==undefined&&Number(row.partner2Code)!==0)continue
     if(row.customsCode!==undefined&&string(row.customsCode)!=='C00')continue
     if(row.motCode!==undefined&&Number(row.motCode)!==0)continue
-    if(Number(row.partnerCode)===0)continue
+    if(Number(row.partnerCode)===0){
+      const usd=number(row.primaryValue),kg=number(row.netWgt)
+      if(usd!==null&&kg!==null&&usd>0&&kg>0)
+        worldTotal={countryCode:'',countryName:'World',importValueUsd:usd,
+          importWeightKg:kg,estimatedNetWeight:row.isNetWgtEstimated===true}
+      continue
+    }
     const code=comtradeCountryCodeFromIso(string(row.partnerISO))
     if(!code||code==='QA'||!isWorldCountryCode(code))continue
     const usd=number(row.primaryValue),kg=number(row.netWgt)
@@ -133,7 +144,7 @@ export function parseImportOriginYear(raw:unknown,commodity:string,year:number,
   }
   const count=number(payload.count)
   return {year,partners:[...countries.values()],
-    sourceUrl,incompletePreview:rows.length>=500||(count!==null&&count>=500)}
+    sourceUrl,worldTotal,incompletePreview:rows.length>=500||(count!==null&&count>=500)}
 }
 
 /**
@@ -157,7 +168,9 @@ export function rankQatarImportOrigins(
   // threshold; otherwise use the preceding available year and display its date.
   const main=screened.find(year=>year.qualifying.length>0)
   const previous=main?screened.find(year=>year.year===main.year-1):undefined
+  const nationalTotal=main?.worldTotal
   const weightedAverage=main?
+    nationalTotal?nationalTotal.importValueUsd*QAR_PER_USD/nationalTotal.importWeightKg:
     main.qualifying.reduce((sum,p)=>sum+p.importValueUsd,0)*QAR_PER_USD/
     main.qualifying.reduce((sum,p)=>sum+p.importWeightKg,0):null
   // Avoid ranking countries whose claimed availability is based on a few KG.
@@ -202,6 +215,9 @@ export function rankQatarImportOrigins(
       main.partners.length-main.qualifying.length:0,
     annualMinimumTonnes:minimum,
     incompletePreview:recent.some(y=>y.incompletePreview),
+    nationalMeanFromWorldTotal:Boolean(nationalTotal),
+    sourceDataStatus:main?'live_comtrade':'no_usable_data',
+    productScope:hs.label,
     sourceUrl:main?.sourceUrl??null,
     previousSourceUrl:previous?.sourceUrl??null,
     sourceName:COMTRADE_SOURCE,
