@@ -1,5 +1,6 @@
 import {getExportHub,QATAR_PORT,type GeoPoint} from './logistics-lanes'
 import type {RouteInputs} from './logistics-screening'
+import {fetchRoadEvidence,type RoadEvidence} from './logistics-road-api'
 
 type Obj=Record<string,unknown>
 const obj=(v:unknown):Obj=>typeof v==='object'&&v!==null&&!Array.isArray(v)?v as Obj:{}
@@ -8,9 +9,10 @@ const marineApi='https://api.searoutes.com'
 export type ProviderState='available'|'unconfigured'|'unavailable'|'missing'
 export type ExternalLogistics={
  seaRoutes:RouteInputs['seaDistances']
+ roadRoute:RoadEvidence|null
  lpi:number|null;lpiYear:number|null;waves:number|null;weatherAgeHours:number|null
- states:{searoutes:ProviderState;worldBank:ProviderState;marineWeather:ProviderState}
- refs:{searoutes:string|null;worldBank:string|null;marineWeather:string|null}
+ states:{searoutes:ProviderState;worldBank:ProviderState;marineWeather:ProviderState;googleRoad:ProviderState}
+ refs:{searoutes:string|null;worldBank:string|null;marineWeather:string|null;googleRoad:string|null}
  messages:string[]
 }
 export function extractSeaRoute(data:unknown):{km:number;durationDays:number|null}|null{
@@ -101,7 +103,7 @@ export async function fetchMarineWave(location:GeoPoint):
   // Commercial app: public free endpoint is not assumed licensed.
   const key=process.env.OPEN_METEO_COMMERCIAL_API_KEY
   if(!key)return {value:null,state:'unconfigured',url:null}
-  const url=new URL('https://customer-api.open-meteo.com/v1/marine')
+  const url=new URL('https://customer-marine-api.open-meteo.com/v1/marine')
   url.searchParams.set('latitude',String(location.lat))
   url.searchParams.set('longitude',String(location.lon))
   url.searchParams.set('daily','wave_height_max')
@@ -119,17 +121,18 @@ export async function fetchMarineWave(location:GeoPoint):
 export async function collectLogisticsEvidence(country:string):Promise<ExternalLogistics>{
   const hub=getExportHub(country)
   if(!hub)throw Error('Missing origin hub')
-  const [sea,lpi,marine]=await Promise.all([
+  const [sea,lpi,marine,road]=await Promise.all([
     fetchSeaRoutes(country),fetchWorldBankLpi(country),
-    fetchMarineWave(hub.sea),
+    fetchMarineWave(hub.sea),fetchRoadEvidence(country),
   ])
   return {
-    seaRoutes:sea.seaRoutes,lpi:lpi.value,lpiYear:lpi.year,
+    seaRoutes:sea.seaRoutes,roadRoute:road.data,lpi:lpi.value,lpiYear:lpi.year,
     waves:marine.value,weatherAgeHours:null,
-    states:{searoutes:sea.state,worldBank:lpi.state,marineWeather:marine.state},
+    states:{searoutes:sea.state,worldBank:lpi.state,marineWeather:marine.state,
+      googleRoad:road.status==='not_applicable'?'missing':road.status},
     refs:{searoutes:sea.source,
       worldBank:lpi.state==='available'?lpi.url:null,
-      marineWeather:marine.url},
+      marineWeather:marine.url,googleRoad:road.data?.sourceUrl??null},
     messages:sea.messages,
   }
 }
