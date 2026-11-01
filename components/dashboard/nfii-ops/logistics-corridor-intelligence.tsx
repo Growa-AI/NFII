@@ -15,9 +15,13 @@ type ModelResponse={
     deliveryDeadlineDays:number;product:string;productClass:string;coldChain:boolean;
     handling:string;importDestination:string}
   routes:ScreenedRoute[]
-  sourceStatus:{searoutes:string;worldBank:string;marineWeather:string}
-  sources:{searoutes:string|null;worldBank:string|null;marineWeather:string|null}
+  sourceStatus:{searoutes:string;worldBank:string;marineWeather:string;googleRoad:string}
+  sources:{searoutes:string|null;worldBank:string|null;marineWeather:string|null;googleRoad:string|null}
   dataWarnings:string[]
+  freightBenchmark:{status:string;message:string;quoteStatus:string;
+    estimate:{amountMinQar:number;amountMaxQar:number;
+      perKgMinQar:number;perKgMaxQar:number;daysMin:number|null;
+      daysMax:number|null;checkedAt:string;sourceUrl:string}|null}
   pricesDisclaimer:string;scheduleDisclaimer:string;riskDisclaimer:string
   generatedAt:string;bookingAvailable:false
 }
@@ -277,6 +281,51 @@ export function LogisticsCorridorIntelligence({
         'حدد المنتج والبلد والكمية، ثم قارن وسائل النقل.')}
     </p>}
     {data&&<div className="space-y-4">
+      {data.freightBenchmark.estimate&&<div className="rounded-lg border border-line-accent bg-cream-100/20 p-3">
+        <div className="flex flex-wrap items-center justify-between gap-2">
+          <h3 className="text-[13px] font-semibold text-content">
+            {tx('Freightos marketplace freight benchmark · dry 40-foot container',
+              'مرجع تكلفة الشحن البحري لحاوية جافة ٤٠ قدماً')}
+          </h3>
+          <a href={data.freightBenchmark.estimate.sourceUrl} target="_blank"
+            rel="noopener noreferrer" className="text-[11px] text-sage-700 underline">
+            {tx('Freightos source','المصدر: Freightos')} <ExternalLink className="inline h-3 w-3"/>
+          </a>
+        </div>
+        <div className="mt-3 grid gap-3 sm:grid-cols-3">
+          <div><p className="text-[10px] text-content-soft">QAR/kg</p>
+            <strong className="text-[17px] tabular-nums text-content">
+              {format(data.freightBenchmark.estimate.perKgMinQar,3)} –
+              {' '}{format(data.freightBenchmark.estimate.perKgMaxQar,3)}
+            </strong></div>
+          <div><p className="text-[10px] text-content-soft">{tx('Full shipment freight QAR','تكلفة الشحن بالريال')}</p>
+            <strong className="text-[17px] tabular-nums text-content">
+              {format(data.freightBenchmark.estimate.amountMinQar,0)} –
+              {' '}{format(data.freightBenchmark.estimate.amountMaxQar,0)}
+            </strong></div>
+          <div><p className="text-[10px] text-content-soft">{tx('Marketplace transit range','مدة النقل المرجعية')}</p>
+            <strong className="text-[17px] tabular-nums text-content">
+              {data.freightBenchmark.estimate.daysMin===null?'N/A':
+                data.freightBenchmark.estimate.daysMin+'–'+data.freightBenchmark.estimate.daysMax+
+                ' '+tx('days','أيام')}
+            </strong></div>
+        </div>
+        <div className="mt-3 flex items-center gap-2">
+          <span className="text-[10px] text-content-soft">
+            {tx('Marketplace cost interval · QAR/kg','نطاق الأسعار المرجعي')}
+          </span>
+          <div className="h-3 min-w-12 flex-1 overflow-hidden rounded-full bg-muted">
+            <div className="h-full rounded-full bg-sage-600" style={{width:'100%'}}/>
+          </div>
+          <span className="text-[11px] tabular-nums text-content">
+            {format(data.freightBenchmark.estimate.perKgMinQar,3)}–{format(data.freightBenchmark.estimate.perKgMaxQar,3)}
+          </span>
+        </div>
+        <p className="mt-2 text-[11px] text-content-soft">
+          {tx('Non-binding marketplace estimate, not a confirmed carrier quote. Applies only to the dry-container scenario. Excludes reefer, inland drayage, customs, insurance and local handling.',
+            'تقدير سوقي غير ملزم لحاوية جافة فقط ولا يشمل التخليص والرسوم والتأمين والتبريد.')}
+        </p>
+      </div>}
       <div className="grid grid-cols-2 gap-2 md:grid-cols-4">
         {[
           {label:tx('Corridor scenarios','سيناريوهات الطرق'),value:String(data.routes.length)},
@@ -416,11 +465,14 @@ export function LogisticsCorridorIntelligence({
           {tx('Planning analysis, not a freight booking','تحليل تخطيطي وليس حجز شحن')}
         </p>
         <p className="mt-1">{data.pricesDisclaimer} {data.scheduleDisclaimer}</p>
+        <p className="mt-1">{data.freightBenchmark.message}</p>
         <p className="mt-1">{data.riskDisclaimer}</p>
         <p className="mt-2 text-content-soft">
           {tx('Source availability: ','توفر المصادر: ')}
           SeaRoutes {data.sourceStatus.searoutes} · World Bank LPI {data.sourceStatus.worldBank} ·
-          Marine forecast {data.sourceStatus.marineWeather}
+          Marine forecast {data.sourceStatus.marineWeather} ·
+          Google Routes {data.sourceStatus.googleRoad} ·
+          Freightos {data.freightBenchmark.status}
         </p>
         <div className="mt-2 flex flex-wrap gap-3">
           {Object.values(data.sources).filter((v):v is string=>Boolean(v)).map(url=>
