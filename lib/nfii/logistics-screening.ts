@@ -7,6 +7,8 @@
 import {CARGO_SPECS,getExportHub,haversineKm,QATAR_AIR,QATAR_PORT,QATAR_ROAD,type GeoPoint} from './logistics-lanes'
 import type {GeoLine} from './logistics-route-geometry'
 import type {HazardCoverage} from './logistics-hazards'
+import {assessExposure,type ExposureAssessment} from './logistics-risk'
+import type {SecurityIntelligence} from './logistics-security'
 
 export type Mode='sea'|'air'|'road'
 export type CorridorEvidence='carrier_route_geometry'|'geographic_proxy'
@@ -14,7 +16,8 @@ export type RateInput={sea:number|null;air:number|null;road:number|null}
 export type RouteInputs={commodity:string;country:string;tonnes:number;limitDays:number;rates:RateInput;
   seaDistances:Record<string,{km:number;durationDays:number|null;routeUrl:string;geometry?:GeoLine|null;calculationSource?:'local_ocean_network'}>|null;
   lpi:number|null;lpiYear:number|null;waves:number|null;weatherAgeHours:number|null;
-  roadDistanceKm?:number|null;roadDriveHours?:number|null;hazards?:HazardCoverage|null}
+  roadDistanceKm?:number|null;roadDriveHours?:number|null;hazards?:HazardCoverage|null;
+  security?:SecurityIntelligence|null}
 export type ScreenedRoute={
   id:string;country:string;commodity:string;mode:Mode;via:string|null;
   from:string;to:string;originCode:string;destinationCode:string;
@@ -22,6 +25,7 @@ export type ScreenedRoute={
   estimatedDays:number|null;timeBasis:string;feasibleBeforeDeadline:boolean|null;
   reeferRequired:boolean;storageNote:string;
   rateQarPerTonne:number|null;freightTotalQar:number|null;freightQarKg:number|null;
+  exposure:ExposureAssessment;
   costSource:'user_supplied_rate'|'no_rate';riskScore:null;
   riskBand:'reported_alert'|'no_nearby_reported_alert'|'unavailable';riskDrivers:string[];
   riskMethod:string;quality:'route_api'|'model_only';
@@ -56,7 +60,10 @@ export function buildScreenedRoutes(inputs:RouteInputs):ScreenedRoute[]{
       realRoad?inputs.roadDistanceKm!:route.mode==='road'?rawKm*1.4:rawKm
     const documentedDistance=route.mode==='sea'&&routeKm!==undefined
     // Single air and road paths are only coarse screening scenarios.
-    const days=route.mode==='sea'?(observed?.durationDays??null):null
+    // Airport-to-airport planning estimate only; NOT a carrier-confirmed ETA.
+    const airDays=route.mode==='air'?
+      Math.round((rawKm/750+24+6)/24*10)/10:null
+    const days=route.mode==='sea'?(observed?.durationDays??null):airDays
     const rate=inputs.rates[route.mode]
     const safeRate=rate!==null&&Number.isFinite(rate)&&rate>0&&rate<MAX?rate:null
     const riskDrivers:string[]=[]
@@ -90,6 +97,16 @@ export function buildScreenedRoutes(inputs:RouteInputs):ScreenedRoute[]{
         inputs.waves+'m; not full voyage exposure')
     if(safeRate===null)
       riskDrivers.push('Actual carrier price not available for this mode')
+    const exposure:ExposureAssessment=inputs.security?
+      assessExposure(route.mode,origin,inputs.security,recent.length>0):{
+        index:null,label:'unknown',confidence:'unavailable',
+        hormuzExposure:route.mode==='sea'&&!['SA','AE','KW','BH','IQ','IR'].includes(origin),
+        airspaceClosure:'not_verified',hormuzClosure:'not_verified',
+        evidence:['Security data not queried'],sources:[],
+      }
+    riskDrivers.push(...exposure.evidence)
+    if(airDays!==null)
+      riskDrivers.push('Air days are modeled: geodesic distance / 750 km/h + 24h handling + 6h buffer; no real flight schedule or operational clearance verified')
     const riskBand:ScreenedRoute['riskBand']=coverage?.state!=='available'?'unavailable':
       recent.length?'reported_alert':'no_nearby_reported_alert'
     return {
@@ -101,7 +118,9 @@ export function buildScreenedRoutes(inputs:RouteInputs):ScreenedRoute[]{
         realRoad?'observed_road_drive_geometry':
         route.mode==='road'?'geometric_estimate':'straight_line_lower_bound',
       estimatedDays:days,
-      timeBasis:documentedDistance?
+      timeBasis:route.mode==='air'?
+        'MODELED air cargo days: geodesic/750 km/h + 24h handling + 6h buffer; not a verified carrier ETA or operational airspace clearance':
+        documentedDistance?
         (observed?.calculationSource==='local_ocean_network'?
           'Ocean-grid route at assumed 14 knots; navigation-only estimate, NO carrier schedule, dwell or customs':
           observed!.durationDays!==null?'SeaRoutes published route duration':'No published schedule/duration'):
@@ -114,8 +133,8 @@ export function buildScreenedRoutes(inputs:RouteInputs):ScreenedRoute[]{
       freightTotalQar:safeRate===null?null:round(safeRate*tonnes,2),
       freightQarKg:safeRate===null?null:round(safeRate/1000,3),
       costSource:safeRate===null?'no_rate':'user_supplied_rate',
-      riskScore:null,riskBand,
-      riskDrivers,riskMethod:'Recent GDACS endpoint alert context; not a numeric probability or verified route disruption',
+      riskScore:exposure.index,riskBand,exposure,
+      riskDrivers,riskMethod:'Source-backed 0–100 exposure INDEX, not a statistical probability of delay, attack or closure',
       quality:documentedDistance||realRoad?'route_api':'model_only',
       evidence:documentedDistance?'carrier_route_geometry':'geographic_proxy',
       sourceUrl:documentedDistance?observed!.routeUrl:realRoad?
@@ -158,6 +177,8 @@ export function buildScreenedRoutes(inputs:RouteInputs):ScreenedRoute[]{
 }
 export const LOGISTICS_DATA_RULES=[
   'No live carrier schedules or bookable routings without carrier API.',
+  'Air days are a geodesic planning estimate at 750 km/h + 24h handling + 6h buffer, not a scheduled carrier ETA.',
+  'The 0–100 security exposure index is not a percentage probability; unavailable evidence stays N/A.',
   'When no SeaRoutes response exists, a locally computed ocean-grid route may be shown at 14-knot assumed vessel speed; not a live service.',
   'Cost values only from user-provided freight rate per tonne; do not imply spot quotes.',
   'GDACS alerts near origin/Qatar are endpoint hazard observations, not route disruption estimates.',

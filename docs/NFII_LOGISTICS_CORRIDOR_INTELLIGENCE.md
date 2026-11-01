@@ -202,3 +202,30 @@ maritime geographic scenario or its estimated sailing-time chart.
 The package reads its binary ocean-grid asset at runtime; Next.js
 `serverExternalPackages` preserves that asset. Unit tests exercise
 a real India → Qatar ocean path, not just fabricated example coordinates.
+
+
+## 2026-11-01: Air planning days and incident-backed Gulf screening
+Airport-to-airport cargo days are now modeled as reference great-circle km /
+750 km/h + 24h cargo handling + 6h operational buffer, expressed in days.
+The result is never a published flight schedule, a NOTAM-compliant flight
+plan, air traffic tracking or a carrier ETA.
+
+Security sources are independently fetched server-side: active unexpired EASA
+CZIB advisories, hormuz.data-tracking.net open AIS crossing counts (24h and
+30 days), UKMTO-derived incident data from the public Hormuz monitor and
+existing GDACS regional hazard notices. Unknown, stale or unavailable sources
+are explicit. AIS counts can underreport under jamming and restrictions.
+The output never confirms a waterway or FIR is open/closed without valid
+official operating notices. The geographic exposure of reference ports to
+Hormuz is assessed separately for each maritime corridor.
+
+The 0–100 value is a *weighted relative exposure index*, NOT a statistical
+percentage chance of attack, shipping interruption, flight closure or delay.
+The index is based on disclosed indicative weights in logistics-risk.ts,
+NOT empirical actuarial calibration. A successful EASA query without a
+matching warning yields 10 points of limited evidence, not a safety finding.
+An active advisory adds EASA-specific points. Hormuz-exposed maritime
+scenarios receive structural 25 points only when AIS/incident data is
+available, supplemented by observed AIS traffic decline and reported incidents.
+Gulf-internal reference ports do not automatically cross Hormuz. Nearby
+GDACS alerts add context. All scores are capped at 100, otherwise N/A.

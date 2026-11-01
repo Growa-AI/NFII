@@ -6,6 +6,7 @@ import {validateLaneInput,CARGO_SPECS,getExportHub} from '@/lib/nfii/logistics-l
 import {collectLogisticsEvidence} from '@/lib/nfii/logistics-providers'
 import {fetchFreightEstimate} from '@/lib/nfii/logistics-freight-benchmark'
 import {fetchGdacsRegionalEvents} from '@/lib/nfii/logistics-hazards'
+import {collectSecurityIntelligence} from '@/lib/nfii/logistics-security'
 import {makeRouteMapOverlays} from '@/lib/nfii/logistics-route-map'
 import {buildScreenedRoutes,LOGISTICS_DATA_RULES,type RateInput} from '@/lib/nfii/logistics-screening'
 import {countryName} from '@/lib/nfii/world-countries'
@@ -57,10 +58,11 @@ export async function GET(request:Request){
   if(!hasSupplierInOrigin(eligible,supplierScope as SupplierOriginScope,parsed.country))
     return reply({error:'This country has no matched suppliers for the selected crop and supplier scope.'},422)
   const matching=eligible.countries.find(row=>row.countryCode===parsed.country)
-  const [evidence,freight,hazards]=await Promise.all([
+  const [evidence,freight,hazards,security]=await Promise.all([
     collectLogisticsEvidence(parsed.country),
     fetchFreightEstimate(parsed.country,parsed.tonnes,CARGO_SPECS[parsed.commodity].coldChain),
     fetchGdacsRegionalEvents(parsed.country),
+    collectSecurityIntelligence(),
   ])
   const screened=buildScreenedRoutes({
     ...parsed,rates,seaDistances:evidence.seaRoutes,
@@ -68,7 +70,7 @@ export async function GET(request:Request){
     waves:evidence.waves,weatherAgeHours:evidence.weatherAgeHours,
     roadDistanceKm:evidence.roadRoute?.distanceKm??null,
     roadDriveHours:evidence.roadRoute?.driveHours??null,
-    hazards,
+    hazards,security,
   })
   const spec=CARGO_SPECS[parsed.commodity]
   const hub=getExportHub(parsed.country)
@@ -91,6 +93,7 @@ export async function GET(request:Request){
     routes:screened,
     mapRoutes:makeRouteMapOverlays(screened,parsed.country,evidence.seaRoutes),
     regionalHazards:hazards,
+    securityIntelligence:security,
     riskContext:{originLpi:evidence.lpi,lpiYear:evidence.lpiYear,
       waveHeightMaxMeters:evidence.waves,worldBankStatus:evidence.states.worldBank,
       weatherStatus:evidence.states.marineWeather},
@@ -99,7 +102,7 @@ export async function GET(request:Request){
     sourceStatus:evidence.states,
     sources:evidence.refs,
     dataWarnings:evidence.messages,
-    riskDisclaimer:'GDACS regional red/orange hazard alerts are proximity observations, not proof of a shipment disruption. Missing evidence is not a low risk score.',
+    riskDisclaimer:'The 0–100 security exposure index is weighted screening, NOT percentage probability of delay, incident or closure. EASA advisories are not NOTAMs; AIS may undercount during jamming. Missing provider evidence returns N/A.',
     pricesDisclaimer:'Freightos marketplace may supply non-binding dry-container reference ranges. Mode-specific route prices are calculated only from manually entered carrier rates; no reefer costs are inferred.',
     scheduleDisclaimer:'No confirmed port call, airline booking, border service or verified real shipment tracking without carrier systems.',
     modelLimitations:LOGISTICS_DATA_RULES,

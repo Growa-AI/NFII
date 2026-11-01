@@ -8,6 +8,7 @@ import {COMMODITY_CATALOG} from '@/lib/platform/commodity-catalog'
 import {CARGO_SPECS,getExportHub} from '@/lib/nfii/logistics-lanes'
 import type {ScreenedRoute} from '@/lib/nfii/logistics-screening'
 import type {RouteMapOverlay} from '@/lib/nfii/logistics-route-map'
+import type {SecurityIntelligence} from '@/lib/nfii/logistics-security'
 import {previewRouteMapOverlays} from '@/lib/nfii/logistics-route-map'
 import type {OperationsSnapshot} from '@/lib/nfii/operations-types'
 import type {SupplierOriginReport,SupplierOriginScope,SupplierOrigin} from '@/lib/nfii/logistics-supplier-origins'
@@ -24,6 +25,7 @@ type ModelResponse={
     handling:string;importDestination:string}
   routes:ScreenedRoute[]
   mapRoutes:RouteMapOverlay[]
+  securityIntelligence:SecurityIntelligence
   sourceStatus:{searoutes:string;worldBank:string;marineWeather:string;googleRoad:string}
   sources:{searoutes:string|null;worldBank:string|null;marineWeather:string|null;googleRoad:string|null}
   dataWarnings:string[]
@@ -423,7 +425,7 @@ export function LogisticsCorridorIntelligence({
       <div className="grid gap-4 xl:grid-cols-2">
         <div className="rounded-md border border-line p-3">
           <h3 className="text-[12px] font-semibold text-content">
-            {tx('Observed hazard signals · not a risk percentage','إشارات الأخطار المرصودة')}
+            {tx('Observed GDACS regional hazards','مخاطر GDACS الإقليمية')}
           </h3>
           <p className="mt-1 text-[10px] text-content-soft">
             {tx('Recent GDACS red/orange alerts within 400 km of the origin gateway or Qatar. Not a route-wide disruption forecast.',
@@ -451,11 +453,11 @@ export function LogisticsCorridorIntelligence({
         </div>
         <div className="rounded-md border border-line p-3">
           <h3 className="text-[12px] font-semibold text-content">
-            {tx('Maritime sailing time · days (provider or estimate)','مدة الرحلة من المصدر · أيام')}
+            {tx('Estimated transit days · sea and air','مدة النقل التقديرية · بحري وجوي')}
           </h3>
           <p className="mt-1 text-[10px] text-content-soft">
-            {tx('SeaRoutes times or ocean-network estimates at assumed 14 knots; excludes port handling. Air/road carrier ETA stays N/A.',
-              'تظهر فقط المدد من المصادر. أوقات شركات النقل غير المتوفرة تبقى غير معروفة.')}
+            {tx('Sea: SeaRoutes or ocean grid at 14 knots, excludes port handling. Air: geodesic / 750 km/h + 24h handling + 6h buffer. NOT verified carrier ETAs.',
+              'بحري: تقدير SeaRoutes أو شبكة بحرية. جوي: المسافة / 750 كم في الساعة + 24 ساعة مناولة + 6 ساعات احتياطية، وليست مواعيد مؤكدة.')}
           </p>
           <div className="mt-3 space-y-2">
             {data.routes.map(route=><div key={route.id}
@@ -469,6 +471,78 @@ export function LogisticsCorridorIntelligence({
                 {route.estimatedDays===null?'N/A':format(route.estimatedDays)}
               </span>
             </div>)}
+          </div>
+        </div>
+      </div>
+      <div className="rounded-md border border-line p-3">
+        <h3 className="text-[12px] font-semibold text-content">
+          {tx('Security exposure index · 0–100 (NOT a probability)','مؤشر التعرض الأمني من 100 وليس احتمالاً')}
+        </h3>
+        <p className="mt-1 text-[11px] text-content-soft">
+          {tx('Relative weighted exposure based on active EASA CZIB, Hormuz AIS crossings, UKMTO incidents and GDACS. It is NOT a percentage chance of disruption.',
+            'مؤشر نسبي مبني على EASA وبيانات عبور هرمز وUKMTO وGDACS، وليس احتمال وقوع حادث.')}
+        </p>
+        <div className="mt-3 space-y-3">
+          {data.routes.map(route=><div key={route.id} className="space-y-1">
+            <div className="flex flex-wrap justify-between gap-2 text-[12px]">
+              <span>{route.mode.toUpperCase()} · {route.from} → Qatar</span>
+              <strong className="tabular-nums">
+                {route.exposure.index===null?'N/A':route.exposure.index+'/100'}
+                {' · '}{route.exposure.label.replaceAll('_',' ')}
+              </strong>
+            </div>
+            <div className="h-2.5 overflow-hidden rounded-full bg-muted">
+              {route.exposure.index!==null&&<div className="h-full bg-warning-strong"
+                style={{width:route.exposure.index+'%'}}/>}
+            </div>
+            <p className="text-[10px] text-content-soft">
+              {route.mode==='sea'?(route.exposure.hormuzExposure?
+                tx('Hormuz crossing required by geographic scenario','عبور مضيق هرمز مطلوب'):
+                tx('No compulsory Hormuz crossing for this reference port','لا يتطلب ميناء المصدر عبور هرمز')):
+                route.mode==='air'?tx('Actual airspace closure NOT verified; EASA CZIB is an advisory','إغلاق المجال الجوي غير مؤكد'):
+                tx('Border access unverified','عبور الحدود غير مؤكد')}
+            </p>
+            {route.exposure.evidence.slice(0,3).map((reason,i)=>
+              <p key={route.id+'-'+i} className="text-[10px] text-content-soft">
+                {reason}
+              </p>)}
+            <div className="flex flex-wrap gap-2">
+              {route.exposure.sources.map(source=><a key={source} href={source} target="_blank"
+                rel="noopener noreferrer" className="text-[10px] text-sage-700 underline">
+                {new URL(source).hostname}
+              </a>)}
+            </div>
+          </div>)}
+        </div>
+        <div className="mt-3 grid gap-2 sm:grid-cols-2">
+          <div className="rounded-md border border-line p-2">
+            <strong className="text-[11px]">Hormuz AIS · {data.securityIntelligence.maritime.state}</strong>
+            <p className="text-[11px]">
+              {data.securityIntelligence.maritime.crossings24h??'N/A'} {'crossings / 24h'}
+              {' · '}
+              {data.securityIntelligence.maritime.trafficDropPct===null?'N/A':
+                data.securityIntelligence.maritime.trafficDropPct+'% decline against 30d daily average'}
+            </p>
+            <p className="text-[10px] text-content-soft">
+              {'UKMTO 30d incidents: '}{data.securityIntelligence.maritime.incidentCount30d??'N/A'}
+              {' · attacks: '}{data.securityIntelligence.maritime.attackCount30d??'N/A'}
+              {' · observed incident/crossing ratio: '}
+              {data.securityIntelligence.maritime.incidentPerCrossingPct===null?'N/A':
+                data.securityIntelligence.maritime.incidentPerCrossingPct+'% (NOT an incident probability)'}
+            </p>
+            <a href={data.securityIntelligence.maritime.sourceUrl} target="_blank"
+              rel="noopener noreferrer" className="text-[10px] text-sage-700 underline">AIS source</a>
+            {' · '}<a href={data.securityIntelligence.maritime.incidentSourceUrl} target="_blank"
+              rel="noopener noreferrer" className="text-[10px] text-sage-700 underline">UKMTO</a>
+          </div>
+          <div className="rounded-md border border-line p-2">
+            <strong className="text-[11px]">EASA CZIB · {data.securityIntelligence.aviation.state}</strong>
+            <p className="text-[11px]">
+              {data.securityIntelligence.aviation.notices.filter(n=>n.countries.includes('QA')).length}
+              {' active advisories covering Qatar; actual closure NOT verified'}
+            </p>
+            <a href={data.securityIntelligence.aviation.sourceUrl} target="_blank"
+              rel="noopener noreferrer" className="text-[10px] text-sage-700 underline">EASA source</a>
           </div>
         </div>
       </div>
@@ -508,7 +582,7 @@ export function LogisticsCorridorIntelligence({
             <td className="p-2 text-right tabular-nums">{route.distanceType==='straight_line_lower_bound'?(route.mode==='sea'?'N/A':'≥'+format(route.distanceKm,0)):format(route.distanceKm,0)}</td>
             <td className="p-2 text-right tabular-nums">{format(route.estimatedDays)}</td>
             <td className="p-2 text-right tabular-nums">{format(route.freightQarKg,3)}</td>
-            <td className="p-2 text-right">{route.riskBand==='reported_alert'?'Regional alert':route.riskBand==='unavailable'?'Unknown':'No nearby alert'}</td>
+            <td className="p-2 text-right">{route.exposure.index===null?'N/A':route.exposure.index+'/100'} · {route.exposure.label.replaceAll('_',' ')}</td>
             <td className="p-2">{route.quality==='route_api'?
               route.sourceUrl?.includes('arcnautical')?'Ocean network estimate':'Routing API evidence':'Unverified itinerary'}</td>
             <td className="p-2"><button type="button"
@@ -568,6 +642,7 @@ export function LogisticsCorridorIntelligence({
           SeaRoutes {data.sourceStatus.searoutes} · World Bank LPI {data.sourceStatus.worldBank} ·
           Marine forecast {data.sourceStatus.marineWeather} ·
           Google Routes {data.sourceStatus.googleRoad} ·
+          EASA {data.securityIntelligence.aviation.state} · Hormuz AIS {data.securityIntelligence.maritime.state} ·
           Freightos {data.freightBenchmark.status}
         </p>
         <div className="mt-2 flex flex-wrap gap-3">

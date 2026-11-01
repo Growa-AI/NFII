@@ -41,7 +41,7 @@ describe('Source-labelled food logistics corridors',()=>{
     expect(routes.some(r=>r.id==='air_direct')).toBe(true)
     expect(routes.some(r=>r.id==='air_dubai')).toBe(false)
     expect(routes.every(r=>r.riskScore===null)).toBe(true)
-    expect(routes.every(r=>r.estimatedDays===null)).toBe(true)
+    expect(routes.find(r=>r.mode==='air')?.estimatedDays).toBeGreaterThan(1)
     expect(routes.some(r=>r.id==='road_candidate')).toBe(false)
   })
   it('uses SeaRoutes geometry only when a valid observation exists',()=>{

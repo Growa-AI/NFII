@@ -27,7 +27,8 @@ describe('Observed hazard coverage is not a fabricated risk percentage',()=>{
     }
     const initial=buildScreenedRoutes(context)
     expect(initial.every(x=>x.riskScore===null)).toBe(true)
-    expect(initial.every(x=>x.estimatedDays===null)).toBe(true)
+    expect(initial.find(x=>x.mode==='sea')?.estimatedDays).toBeNull()
+    expect(initial.find(x=>x.mode==='air')?.estimatedDays).toBeGreaterThan(1)
     expect(initial.map(x=>x.id)).toEqual(['sea_direct','air_direct'])
     expect(initial.every(x=>x.riskBand==='unavailable')).toBe(true)
     const active=buildScreenedRoutes({...context,hazards:{
