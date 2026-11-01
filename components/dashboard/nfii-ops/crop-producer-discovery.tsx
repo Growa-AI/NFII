@@ -179,7 +179,7 @@ export function CropProducerDiscovery({organizationId}:{organizationId:string|nu
             {item.countryName}{item.observedQatarImports&&item.historicalUnitValueQarKg!==null?
               ' · '+item.historicalUnitValueQarKg.toFixed(2)+' QAR/kg':' · unpriced'}
           </option>)}
-          <option value="QA">{tx('Qatar · local sourcing (unpriced)','قطر · توريد محلي (بدون سعر)')}</option>
+
         </select>
       </label>
       <button type="submit" disabled={queryLoading||(research==='places'&&(!country||!organizationId))}
