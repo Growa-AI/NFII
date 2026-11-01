@@ -18,7 +18,7 @@ describe('Growa visual explanations for commodities and agent work',()=>{
     expect(balances).toContain('All quantities cover the selected period')
     expect(balances).toContain('not a daily inventory forecast')
   })
-  it('uses Growa's ink, sage and warm neutrals, not a blue/chart-library theme',()=>{
+  it('uses Growa ink, sage and warm neutrals, not a blue chart-library theme',()=>{
     for(const src of [balances,scenario]){
       expect(src).toContain('var(--growa-sage)')
       expect(src).toContain('var(--growa-ink)')

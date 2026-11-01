@@ -14,16 +14,15 @@ function StackedQuantityBar({
   max:number
   description:string
 }){
-  let x=0
   return <svg role="img" aria-label={description}
     className="block h-9 w-full overflow-visible"
     viewBox="0 0 100 18" preserveAspectRatio="none">
     <rect x="0" y="1" width="100" height="16" rx="3"
       fill="var(--growa-stone-100)"/>
-    {segments.map(seg=>{
+    {segments.map((seg,index)=>{
       const width=max<=0?0:Math.max(0,seg.value/max*100)
-      const current=x
-      x+=width
+      const current=segments.slice(0,index)
+        .reduce((sum,previous)=>sum+(max<=0?0:Math.max(0,previous.value/max*100)),0)
       return width>0?(
         <rect key={seg.name} x={current} y="1" width={width} height="16"
           fill={seg.fill}>
