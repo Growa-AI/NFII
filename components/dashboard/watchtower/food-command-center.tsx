@@ -288,7 +288,6 @@ export function WatchtowerFoodCommandCenter() {
                               className="inline-flex items-center gap-1 text-[11px] font-medium text-sage-700 hover:underline">
                               {tx('Open', 'فتح')} <ArrowUpRight className="h-3 w-3 rtl:-scale-x-100" />
                             </Link>
-                            )}
                           </td>
                         </tr>
                       )
@@ -329,7 +328,6 @@ export function WatchtowerFoodCommandCenter() {
                           <span className="font-medium">{ar ? row.nameAr : row.name}</span>
                           <ArrowUpRight className="h-3 w-3" />
                         </Link>
-                        )}
                         <p className="mt-1 text-[11px] text-content-soft">
                           {ar ? REASON[row.reason].ar : REASON[row.reason].en}
                         </p>
