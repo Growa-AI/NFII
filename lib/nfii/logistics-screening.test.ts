@@ -91,7 +91,7 @@ describe('Source-labelled food logistics corridors',()=>{
     expect(API).not.toContain('createAdminClient')
     expect(API).not.toMatch(/\.insert\(|\.update\(|\.upsert\(/)
     expect(UI).toContain('Compare transport options')
-    expect(UI).toContain('Observed hazard signals · not a risk percentage')
+    expect(UI).toContain('Security exposure index · 0–100 (NOT a probability)')
     expect(UI).toContain('Quoted freight costs · QAR/kg')
     expect(WORKSPACE).toContain('<LogisticsCorridorIntelligence')
   })
