@@ -12,7 +12,7 @@ export type Mode='sea'|'air'|'road'
 export type CorridorEvidence='carrier_route_geometry'|'geographic_proxy'
 export type RateInput={sea:number|null;air:number|null;road:number|null}
 export type RouteInputs={commodity:string;country:string;tonnes:number;limitDays:number;rates:RateInput;
-  seaDistances:Record<string,{km:number;durationDays:number|null;routeUrl:string;geometry?:GeoLine|null}>|null;
+  seaDistances:Record<string,{km:number;durationDays:number|null;routeUrl:string;geometry?:GeoLine|null;calculationSource?:'local_ocean_network'}>|null;
   lpi:number|null;lpiYear:number|null;waves:number|null;weatherAgeHours:number|null;
   roadDistanceKm?:number|null;roadDriveHours?:number|null;hazards?:HazardCoverage|null}
 export type ScreenedRoute={
@@ -102,7 +102,9 @@ export function buildScreenedRoutes(inputs:RouteInputs):ScreenedRoute[]{
         route.mode==='road'?'geometric_estimate':'straight_line_lower_bound',
       estimatedDays:days,
       timeBasis:documentedDistance?
-        (observed!.durationDays!==null?'SeaRoutes published route duration':'No published schedule/duration'):
+        (observed?.calculationSource==='local_ocean_network'?
+          'Ocean-grid route at assumed 14 knots; navigation-only estimate, NO carrier schedule, dwell or customs':
+          observed!.durationDays!==null?'SeaRoutes published route duration':'No published schedule/duration'):
         route.mode==='sea'?'No sea transit ETA; straight-line lower-bound only':
         realRoad?'Google road distance; commercial trucking and border times remain assumptions':
         'Planning estimate from geometric distance, nominal movement and handling; no schedules',
@@ -156,7 +158,7 @@ export function buildScreenedRoutes(inputs:RouteInputs):ScreenedRoute[]{
 }
 export const LOGISTICS_DATA_RULES=[
   'No live carrier schedules or bookable routings without carrier API.',
-  'Unavailable routing sources imply N/A times and no navigable route line.',
+  'When no SeaRoutes response exists, a locally computed ocean-grid route may be shown at 14-knot assumed vessel speed; not a live service.',
   'Cost values only from user-provided freight rate per tonne; do not imply spot quotes.',
   'GDACS alerts near origin/Qatar are endpoint hazard observations, not route disruption estimates.',
   'LPI is a historical national benchmark, not a current shipment risk probability.',
