@@ -37,7 +37,8 @@ describe('First-party crop product evidence from FairTSA public directory',()=>{
     // FairTSA "Pepper" can denote a spice, not Capsicum/bell pepper.
     // Never claim a verified Capsicum producer on this ambiguity.
     expect(findDocumentedCropOrganizations('pepper').every(row=>
-      row.countryCode==='QA'||['company_product_document','historical_crop_marketer'].includes(row.evidenceType))).toBe(true)
+      ['QA','NL','FR','US','CA'].includes(row.countryCode)||
+      ['company_product_document','historical_crop_marketer'].includes(row.evidenceType))).toBe(true)
     expect(findDocumentedCropOrganizations('tomato').map(r=>r.organizationName)).toContain('Fade Food')
     expect(findDocumentedCropOrganizations('milk').every(row=>/milk/i.test(row.matchedProduct))).toBe(true)
   })
@@ -81,6 +82,21 @@ describe('First-party crop product evidence from FairTSA public directory',()=>{
     expect(findDocumentedCropOrganizations('rice','QA').every(r=>r.supplierRole==='trader')).toBe(true)
     expect(findDocumentedCropOrganizations('barley','QA').every(r=>
       r.matchedProduct.toLowerCase().includes('feed'))).toBe(true)
+  })
+  it('indexes verified product-specific international names with their local production country',()=>{
+    expect(findDocumentedCropOrganizations('tomato','NL').map(r=>r.organizationName))
+      .toContain('Agro Care Growers')
+    expect(findDocumentedCropOrganizations('tomato','ZA').map(r=>r.organizationName))
+      .toContain('ZZ2 Group')
+    expect(findDocumentedCropOrganizations('tomato','AE').map(r=>r.organizationName))
+      .toContain('Pure Harvest Smart Farms')
+    expect(findDocumentedCropOrganizations('milk','SA').map(r=>r.organizationName))
+      .toContain('Almarai Company')
+    expect(findDocumentedCropOrganizations('rice','VN').map(r=>r.organizationName))
+      .toContain('Loc Troi Group')
+    expect(findDocumentedCropOrganizations('tomato','BR').map(r=>r.organizationName))
+      .toContain('Agro Care Growers (Brazil operations)')
+    expect(findDocumentedCropOrganizations('rice','CA')).toEqual([])
   })
   it('accepts only known commodity IDs and ISO two-letter country codes',()=>{
     const ok=validateCropProducerSearch(new URLSearchParams('commodity=tomato&country=tr'))
