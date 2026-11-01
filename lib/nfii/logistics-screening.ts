@@ -5,12 +5,13 @@
  * are explicitly modelled planning assumptions, not carrier observations.
  */
 import {CARGO_SPECS,getExportHub,haversineKm,QATAR_AIR,QATAR_PORT,QATAR_ROAD,type GeoPoint} from './logistics-lanes'
+import type {GeoLine} from './logistics-route-geometry'
 
 export type Mode='sea'|'air'|'road'
 export type CorridorEvidence='carrier_route_geometry'|'geographic_proxy'
 export type RateInput={sea:number|null;air:number|null;road:number|null}
 export type RouteInputs={commodity:string;country:string;tonnes:number;limitDays:number;rates:RateInput;
-  seaDistances:Record<string,{km:number;durationDays:number|null;routeUrl:string}>|null;
+  seaDistances:Record<string,{km:number;durationDays:number|null;routeUrl:string;geometry?:GeoLine|null}>|null;
   lpi:number|null;lpiYear:number|null;waves:number|null;weatherAgeHours:number|null;
   roadDistanceKm?:number|null;roadDriveHours?:number|null}
 export type ScreenedRoute={
