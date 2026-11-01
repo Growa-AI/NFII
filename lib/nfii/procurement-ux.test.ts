@@ -50,8 +50,9 @@ describe('Guided procurement experience',()=>{
     expect(workspace).toContain('Organization register is empty. Add an actual supplier to begin.')
     expect(workspace).toContain("canEdit=!isPreview")
   })
-  it('keeps Logistics and Reserves registers and audit facilities unchanged',()=>{
-    expect(workspace).toContain("focus!=='procurement' && <div")
+  it('keeps the Logistics register and separate Reserves command with audit controls',()=>{
+    expect(workspace).toContain("focus==='logistics' && <div")
+    expect(workspace).toContain("<StrategicReservesCommand")
     expect(workspace).toContain("focus!=='procurement'&&<section")
     expect(workspace).toContain('Immutable operation events')
     expect(workspace).toContain('Confirm & audit')
