@@ -7,7 +7,7 @@
 export type CropSourceEvidenceType =
   'crop_sector_association_member'|'national_dates_mark_holder'|
   'company_product_document'|'public_milk_price_listing'|
-  'independent_commodity_listing'
+  'independent_commodity_listing'|'historical_crop_marketer'
 
 export interface ExtraCropListing {
   recordId:string
@@ -208,7 +208,138 @@ const GRAIN='https://grain.net.au/traders-brokers/'
 const UNICA='https://www.unicagroup.es/certificados/Unicagroup/ECOLOGICO/ECO%20UNICA%20GROUP%20Vig%2011-2026.pdf'
 const VICASOL='https://vicasol.es/wp-content/uploads/2026/03/ES-ECO-003-AN.724-0012847.2025.001.pdf'
 
+
+/**
+ * Specific CROP-by-company marketing records from the COEXPHAL 2021/22 annual
+ * report (pages 43, 47, 51, 71). Historical evidence of a marketed crop,
+ * not of present-day farm ownership, exports, stock or qualification.
+ */
+const COEXPHAL_2022:Record<'tomato'|'cucumber'|'pepper'|'lettuce',readonly string[]>={
+  "tomato": [
+    "Acrena, S.A.T.",
+    "Costa de Níjar, S.A.T.",
+    "Las Hortichuelas, S.A.T.",
+    "Agroaguadulce, S.L.",
+    "Costa Dulce, S.A.T.",
+    "Murgiverde, S.C.A.",
+    "Agrocultivos Valle de Arthal, S.L.",
+    "Dunamar, S.A.T.",
+    "Naturalia Fresh, S.A.T.",
+    "AgroIris, S.A.T.",
+    "Duniagro, S.A.T.",
+    "Nature Choice, S.A.T.",
+    "Agrosol Export, S.L.",
+    "Ecoinver Export, S.L.",
+    "Níjar Sol, S.A.T.",
+    "Almerifresh, S.A.T.",
+    "Grupo Agroponiente",
+    "Toledano Hortícola, S.L.",
+    "Balcón de Níjar, S.L.",
+    "Hortalizas Indasur, S.L.",
+    "Unica Group, S.C.A.",
+    "Bio-Sabor, S.A.T.",
+    "Hortamar, S.C.A.",
+    "Vega Cañada, S.A.",
+    "Biosol Portocarrero, S.A.T.",
+    "Import Export Fruva, S.L.",
+    "Vicasol, S.C.A.",
+    "Casi, S.C.A.",
+    "Indasol, S.A.T.",
+    "Zoi Agrícola, S.L.",
+    "Coprohníjar, S.C.A.",
+    "Inver, S.A.T."
+  ],
+  "cucumber": [
+    "Acrena, S.A.T.",
+    "Costa Ejido, S.A.T.",
+    "José y Paco, S.L.",
+    "Agroaguadulce, S.L.",
+    "Dunamar, S.A.T.",
+    "Las Hortichuelas, S.A.T.",
+    "AgroIris, S.A.T.",
+    "Ecoinver Export, S.L.",
+    "Murgiverde, S.C.A.",
+    "Agrosol Export, S.L.",
+    "Ejidomar, S.C.A.",
+    "Naturalia Fresh, S.A.T.",
+    "Almerifresh, S.A.T.",
+    "Frutas Escobi, S.L.",
+    "Nature Choice, S.A.T.",
+    "Bio-Sabor, S.A.T.",
+    "Grupo Agroponiente",
+    "Toledano Hortícola, S.L.",
+    "Biosol Portocarrero, S.A.T.",
+    "Hortamar, S.C.A.",
+    "Unica Group, S.C.A.",
+    "Casi, S.C.A.",
+    "Hortofrutícola Mabe, S.A.T.",
+    "Vega Cañada, S.A.",
+    "Coprohníjar, S.C.A.",
+    "Import Export Fruva, S.L.",
+    "Vicasol, S.C.A.",
+    "Costa de Níjar, S.A.T.",
+    "Indasol, S.A.T.",
+    "Zoi Agrícola, S.L.",
+    "Costa Dulce, S.A.T.",
+    "Inver, S.A.T."
+  ],
+  "pepper": [
+    "Acrena, S.A.T.",
+    "Costa Ejido, S.A.T.",
+    "José y Paco, S.L.",
+    "Agroaguadulce, S.L.",
+    "Dunamar, S.A.T.",
+    "Las Hortichuelas, S.A.T.",
+    "Agrocultivos Valle de Arthal, S.L.",
+    "Ecoinver Export, S.L.",
+    "Murgiverde, S.C.A.",
+    "AgroIris, S.A.T.",
+    "Ejidomar, S.C.A.",
+    "Naturalia Fresh, S.A.T.",
+    "Agrosol Export, S.L.",
+    "Frutas Escobi, S.L.",
+    "Nature Choice, S.A.T.",
+    "Almerifresh, S.A.T.",
+    "Grupo Agroponiente",
+    "Toledano Hortícola, S.L.",
+    "Balcón de Níjar, S.L.",
+    "Hortalizas Indasur, S.L.",
+    "Unica Group, S.C.A.",
+    "Bio-Sabor, S.A.T.",
+    "Hortamar, S.C.A.",
+    "Vega Cañada, S.A.",
+    "Biosol Portocarrero, S.A.T.",
+    "Hortofrutícola Mabe, S.A.T.",
+    "Vicasol, S.C.A.",
+    "Casi, S.C.A.",
+    "Import Export Fruva, S.L.",
+    "Zoi Agrícola, S.L.",
+    "Coprohníjar, S.C.A.",
+    "Indasol, S.A.T.",
+    "Costa Dulce, S.A.T.",
+    "Inver, S.A.T."
+  ],
+  "lettuce": [
+    "Agrícola Navarro de Haro, S.L.",
+    "Agrupapulpí, S.A.",
+    "Grupo Agroponiente",
+    "Primaflor, S.A.T.",
+    "Tomasol, S.A.T.",
+    "Unica Group, S.C.A.",
+    "Zoi Agrícola, S.L."
+  ]
+}
+const COEXPHAL_REPORT='https://www.coexphal.es/wp-content/uploads/2023/10/MEMORIA-COEXPHAL-2022.pdf'
+
 export const ADDITIONAL_CROP_LISTINGS:readonly ExtraCropListing[]=[
+  ...Object.entries(COEXPHAL_2022).flatMap(([commodity,names])=>
+    names.map((name,index)=>({
+      recordId:'COEX-2021-22-'+commodity+'-'+String(index+1),
+      organizationName:name,commodityId:commodity,countryCode:'ES',countryName:'Spain',
+      matchedProduct:commodity+' (marketed product, 2021/22 season)',
+      sourceName:'COEXPHAL – annual report 2021/22 crop-specific marketers',
+      sourceUrl:COEXPHAL_REPORT,evidenceType:'historical_crop_marketer' as const,
+    }))),
   ...INDIA_RICE.map((name,index)=>({
     recordId:'AIREA-2024-25-'+String(index+1),
     organizationName:name,commodityId:'rice',countryCode:'IN',countryName:'India',
